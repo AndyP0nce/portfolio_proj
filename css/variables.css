@@ -1,0 +1,39 @@
+/* ══════════════════════════════════════════
+   DESIGN TOKENS — Andrew's Portfolio Site
+   ══════════════════════════════════════════ */
+:root {
+  /* Colors */
+  --bg:     #060608;
+  --s1:     #0d0d12;
+  --s2:     #13131c;
+  --s3:     #1a1a26;
+  --border: #222232;
+  --border2:#2e2e45;
+
+  /* Text */
+  --text:   #dde0f0;
+  --muted:  #5a5a7a;
+  --dim:    #3a3a55;
+
+  /* Semantic colors */
+  --green:  #0dff8c;
+  --green2: #00cc6a;
+  --red:    #ff3d5a;
+  --amber:  #ffcc00;
+  --blue:   #3d9eff;
+  --purple: #b57bff;
+  --teal:   #00e5cc;
+  --pink:   #ff6eb4;
+  --orange: #ff8c42;
+
+  /* Typography */
+  --font-body:  'Figtree', sans-serif;
+  --font-mono:  'Martian Mono', monospace;
+  --font-title: 'Dela Gothic One', sans-serif;
+
+  /* Spacing */
+  --pad: 24px;
+  --gap: 16px;
+  --radius: 12px;
+  --radius-sm: 8px;
+}

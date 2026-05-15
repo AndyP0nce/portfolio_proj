@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Andrew's Portfolio</title>
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a class="nav-brand" href="index.html">PORTFOLIO <span>TRACKER</span></a>
+  <div class="nav-links">
+    <a class="nav-link active" href="index.html">Overview</a>
+    <a class="nav-link" href="pages/live/dashboard.html">Live Dashboard</a>
+    <a class="nav-link" href="pages/charts/charts.html">Charts</a>
+    <a class="nav-link" href="pages/projection/projection.html">Projection</a>
+    <a class="nav-link" href="pages/analysis/analysis.html">Tax &amp; Fees</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <div class="hero-label">Andrew Ponce · May 15, 2026 · All Accounts</div>
+      <div class="hero-total" id="heroTotal">$15,310.13</div>
+      <div class="hero-change">▲ +$1,967.88 all time · +14.7% blended return</div>
+    </div>
+    <div class="pill-row">
+      <div class="pill">
+        <div class="pill-label">Taxable Individual</div>
+        <div class="pill-val green">$7,976</div>
+        <div class="pill-sub green">+$1,478 · +22.74%</div>
+      </div>
+      <div class="pill">
+        <div class="pill-label">Roth IRA</div>
+        <div class="pill-val green">$7,334</div>
+        <div class="pill-sub green">+$490 · +7.16%</div>
+      </div>
+    </div>
+  </div>
+  <div class="stat-strip">
+    <div class="stat-box"><div class="stat-label">Total P&L</div><div class="stat-val green">+$1,968</div><div class="stat-sub">all time vs cost basis</div></div>
+    <div class="stat-box"><div class="stat-label">Daily DCA</div><div class="stat-val green">$25.90/day</div><div class="stat-sub">$9,454/yr auto-invested</div></div>
+    <div class="stat-box"><div class="stat-label">Annual Divs</div><div class="stat-val amber">~$400/yr</div><div class="stat-sub">~$33/mo · mostly tax-free</div></div>
+    <div class="stat-box"><div class="stat-label">RH Match</div><div class="stat-val green">~$224/yr</div><div class="stat-sub">3% Roth · 1% Taxable</div></div>
+    <div class="stat-box"><div class="stat-label">2026 IRA</div><div class="stat-val blue">$1,877</div><div class="stat-sub">25% · $5,623 to max</div></div>
+    <div class="stat-box"><div class="stat-label">IRA Match</div><div class="stat-val amber">$56.31</div><div class="stat-sub">3% Gold · earned 2026</div></div>
+    <div class="stat-box"><div class="stat-label">Top Gainer</div><div class="stat-val green">TQQQ</div><div class="stat-sub">+83.81% all time 🔥</div></div>
+    <div class="stat-box"><div class="stat-label">Watch Out</div><div class="stat-val red">IBM</div><div class="stat-sub">−15.42% · biggest loser</div></div>
+  </div>
+</div>
+
+<!-- QUICK LINKS -->
+<div class="body">
+  <div class="sec-head">
+    <div class="sec-title">Navigate</div>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="cards2">
+    <a href="pages/live/dashboard.html" style="text-decoration:none;">
+      <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div class="card-head">🟢 Live Dashboard</div>
+        <div style="font-family:var(--font-title);font-size:18px;letter-spacing:1px;margin-bottom:6px;">Real-Time Prices</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">
+          Finnhub API · CoinGecko crypto · Updates every 15s during market hours · Day high/low · All-time P&L · Market open/close banner
+        </div>
+      </div>
+    </a>
+    <a href="pages/charts/charts.html" style="text-decoration:none;">
+      <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div class="card-head">📊 Charts</div>
+        <div style="font-family:var(--font-title);font-size:18px;letter-spacing:1px;margin-bottom:6px;">Portfolio Visualizations</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">
+          P&L per holding · Dividend income breakdown · Portfolio allocation donut · Daily DCA distribution
+        </div>
+      </div>
+    </a>
+    <a href="pages/projection/projection.html" style="text-decoration:none;">
+      <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--purple)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div class="card-head">🔮 Projection</div>
+        <div style="font-family:var(--font-title);font-size:18px;letter-spacing:1px;margin-bottom:6px;">30-Year Growth Model</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">
+          8% / 6% / 4% scenarios · Live inputs · Match included · Milestone cards · Annual breakdown table
+        </div>
+      </div>
+    </a>
+    <a href="pages/analysis/analysis.html" style="text-decoration:none;">
+      <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--amber)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div class="card-head">💸 Tax &amp; Fees</div>
+        <div style="font-family:var(--font-title);font-size:18px;letter-spacing:1px;margin-bottom:6px;">After-Tax Analysis</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">
+          Tax bracket impact · Expense ratio drag · Pre vs after-tax projection · Annual cost breakdown
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- LAST UPDATED -->
+  <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div style="font-family:var(--font-title);font-size:14px;letter-spacing:1px;">Data Last Updated</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:3px;">May 15, 2026 · From Robinhood screenshots · Update holdings in data/holdings.js</div>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:right;">
+      To add live prices → <span style="color:var(--green)">pages/live/dashboard.html</span><br>
+      To update holdings → <span style="color:var(--blue)">data/holdings.js</span>
+    </div>
+  </div>
+</div>
+
+<footer>
+  ANDREW PONCE · PERSONAL PORTFOLIO TRACKER · NOT FINANCIAL ADVICE<br>
+  PRICES: FINNHUB.IO (STOCKS) + COINGECKO (CRYPTO) · COST BASIS ESTIMATED FROM SCREENSHOTS<br>
+  ET IS AN MLP — K-1 TAX FORM REQUIRED · CONSULT A TAX PROFESSIONAL
+</footer>
+
+</body>
+</html>

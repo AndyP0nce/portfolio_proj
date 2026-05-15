@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Dashboard · Andrew's Portfolio</title>
+<link rel="stylesheet" href="../../css/variables.css">
+<link rel="stylesheet" href="../../css/base.css">
+<link rel="stylesheet" href="../../css/components.css">
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-brand" href="../../index.html">PORTFOLIO <span>TRACKER</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="../../index.html">Overview</a>
+    <a class="nav-link active" href="dashboard.html">Live Dashboard</a>
+    <a class="nav-link" href="../charts/charts.html">Charts</a>
+    <a class="nav-link" href="../projection/projection.html">Projection</a>
+    <a class="nav-link" href="../analysis/analysis.html">Tax &amp; Fees</a>
+  </div>
+</nav>
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="mkt-status">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText" class="muted">Loading...</span>
+  </div>
+  <div class="clocks">
+    <div class="clock-item">PT <span class="clock-val" id="ptClock">--:--:--</span></div>
+    <div class="clock-item">ET <span class="clock-val" id="etClock">--:--:--</span></div>
+    <div class="font-mono" style="font-size:10px;display:flex;align-items:center;gap:6px;">
+      <span id="apiDot" style="width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
+      <span id="apiLabel" class="muted">API: Enter key below</span>
+    </div>
+    <div class="clock-item">↻ <span id="lastUpdate" class="dim">—</span></div>
+  </div>
+</div>
+<!-- API KEY INPUT -->
+<div style="margin:16px 24px;background:rgba(181,123,255,0.06);border:1px solid rgba(181,123,255,0.25);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <div>
+    <div style="font-family:var(--font-title);font-size:14px;letter-spacing:1px;color:var(--purple);">d83emihr01qjsh1l9i8gd83emihr01qjsh1l9i90</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:3px;">Free at finnhub.io · Real-time US stocks · Saved in your browser only</div>
+    <div id="keyStatus" style="font-family:var(--font-mono);font-size:10px;margin-top:5px;"></div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <input id="apiKeyInput" type="text" placeholder="Paste Finnhub key..." style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:9px 13px;font-family:var(--font-mono);font-size:11px;color:var(--text);outline:none;width:260px;">
+    <button onclick="connectAPI()" style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:var(--font-title);font-size:12px;letter-spacing:1px;cursor:pointer;">CONNECT</button>
+  </div>
+</div>
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <div class="hero-label">Live Portfolio · Finnhub + CoinGecko</div>
+      <div class="hero-total" id="heroTotal">$—</div>
+      <div class="hero-change" id="heroChange" style="color:var(--muted)">Loading prices...</div>
+    </div>
+    <div class="pill-row">
+      <div class="pill"><div class="pill-label">Taxable</div><div class="pill-val" id="taxVal">$—</div><div class="pill-sub" id="taxPL">—</div></div>
+      <div class="pill"><div class="pill-label">Roth IRA</div><div class="pill-val" id="rothVal">$—</div><div class="pill-sub" id="rothPL">—</div></div>
+    </div>
+  </div>
+  <div class="stat-strip">
+    <div class="stat-box"><div class="stat-label">All-Time P&L</div><div class="stat-val" id="allTimePL">—</div><div class="stat-sub">vs cost basis</div></div>
+    <div class="stat-box"><div class="stat-label">Today's P&L</div><div class="stat-val" id="todayPL">—</div><div class="stat-sub">vs prev close</div></div>
+    <div class="stat-box"><div class="stat-label">Annual Divs</div><div class="stat-val amber">~$400</div><div class="stat-sub">~$33/mo · mostly Roth</div></div>
+    <div class="stat-box"><div class="stat-label">Daily DCA</div><div class="stat-val green">$25.90</div><div class="stat-sub">$9,454/yr total</div></div>
+    <div class="stat-box"><div class="stat-label">RH Match/yr</div><div class="stat-val green">~$224</div><div class="stat-sub">3% Roth · 1% Taxable</div></div>
+    <div class="stat-box"><div class="stat-label">2026 IRA</div><div class="stat-val blue">$1,877</div><div class="stat-sub">25% · max ~Oct 2026</div></div>
+  </div>
+</div>
+<!-- SESSION BANNER -->
+<div style="margin:0 24px 16px;">
+  <div class="banner banner-closed" id="sessionBanner">
+    <div><div class="banner-title" id="bannerTitle">Checking...</div><div class="banner-sub" id="bannerSub"></div></div>
+    <div class="banner-right" id="bannerRight"></div>
+  </div>
+</div>
+<div class="body">
+  <!-- TAXABLE TABLE -->
+  <div>
+    <div class="sec-head"><div class="sec-title">Taxable Brokerage</div><div class="sec-line"></div><div class="sec-tag" id="taxTag">Individual</div></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Asset</th><th>Shares</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>Value</th><th>All-Time P&L</th><th>%</th><th>Hi / Lo</th><th>Div Yield</th></tr></thead>
+      <tbody id="taxBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Enter API key to load live prices</td></tr></tbody>
+      <tfoot><tr><td>TAXABLE TOTAL</td><td>—</td><td>—</td><td>—</td><td id="taxDayChg">—</td><td id="taxTotal">—</td><td id="taxTotalPL">—</td><td id="taxTotalPct">—</td><td>—</td><td class="green">~$124/yr</td></tr></tfoot>
+    </table></div>
+  </div>
+  <!-- ROTH TABLE -->
+  <div>
+    <div class="sec-head"><div class="sec-title">Roth IRA</div><div class="sec-line"></div><div class="sec-tag">Tax-Free Growth</div></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Asset</th><th>Shares</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>Value</th><th>All-Time P&L</th><th>%</th><th>Hi / Lo</th><th>Div Yield</th></tr></thead>
+      <tbody id="rothBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Enter API key to load live prices</td></tr></tbody>
+      <tfoot><tr><td>ROTH IRA TOTAL</td><td>—</td><td>—</td><td>—</td><td id="rothDayChg">—</td><td id="rothTotal">—</td><td id="rothTotalPL">—</td><td id="rothTotalPct">—</td><td>—</td><td class="green">~$276/yr TAX-FREE</td></tr></tfoot>
+    </table></div>
+  </div>
+  <!-- CRYPTO TABLE -->
+  <div>
+    <div class="sec-head"><div class="sec-title">Crypto</div><div class="sec-line"></div><div class="sec-tag">CoinGecko · No Key Needed</div></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Asset</th><th>Coins</th><th>Live Price</th><th>24hr Chg</th><th>Value</th><th>All-Time P&L</th><th>%</th><th>Risk</th></tr></thead>
+      <tbody id="cryptoBody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading CoinGecko...</td></tr></tbody>
+      <tfoot><tr><td>CRYPTO TOTAL</td><td>—</td><td>—</td><td>—</td><td id="cryptoTotal">—</td><td id="cryptoTotalPL">—</td><td id="cryptoTotalPct">—</td><td>—</td></tr></tfoot>
+    </table></div>
+  </div>
+</div>
+<footer>FINNHUB REAL-TIME · COINGECKO CRYPTO · API KEY STORED IN BROWSER ONLY · NOT FINANCIAL ADVICE</footer>
+<script src="../../data/holdings.js"></script>
+<script src="../../js/utils.js"></script>
+<script src="../../js/market.js"></script>
+<script src="../../js/prices.js"></script>
+<script>
+function renderHoldings(holdings, tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  let totalVal=0,totalCost=0,totalDay=0;
+  tbody.innerHTML = holdings.map(h => {
+    const d = liveData[h.sym] || {c:h.seedPrice,pc:h.seedPrice,h:h.seedPrice,l:h.seedPrice,dp:0};
+    const val=d.c*h.shares, cost=h.avgCost*h.shares;
+    const pl=val-cost, plPct=(pl/cost)*100;
+    const day=(d.c-d.pc)*h.shares, dayPct=d.dp||((d.c-d.pc)/d.pc*100);
+    totalVal+=val; totalCost+=cost; totalDay+=day;
+    return `<tr id="row-${h.sym}">
+      <td><div class="tkr" style="color:${h.color}">${h.sym}</div><div class="tkr-sub">${h.name}</div></td>
+      <td>${h.shares<1?h.shares.toFixed(5):h.shares}</td>
+      <td>${fmtPrice(d.c)}</td>
+      <td style="color:var(--muted)">${fmtPrice(d.pc)}</td>
+      <td class="${pClass(day)}">${pSign(day)}${$f(day)} (${pSign(dayPct)}${dayPct.toFixed(2)}%)</td>
+      <td>${$f(val)}</td>
+      <td class="${pClass(pl)}">${pSign(pl)}${$f(pl)}</td>
+      <td class="${pClass(plPct)}">${pSign(plPct)}${plPct.toFixed(1)}%</td>
+      <td style="color:var(--muted);font-size:11px;">${d.h?$f(d.h*h.shares):'—'} / ${d.l?$f(d.l*h.shares):'—'}</td>
+      <td class="amber">${h.divYield}%</td>
+    </tr>`;
+  }).join('');
+  return {totalVal,totalCost,totalDay};
+}
+
+function renderCrypto() {
+  const tbody=document.getElementById('cryptoBody');
+  let tv=0,tc=0;
+  tbody.innerHTML = TAXABLE_CRYPTO.map(c => {
+    const d=liveData[c.sym]||{c:c.seedPrice,pc:c.seedPrice,dp:0};
+    const val=d.c*c.coins, cost=c.avgCost*c.coins;
+    const pl=val-cost, plPct=(pl/cost)*100;
+    tv+=val; tc+=cost;
+    return `<tr id="row-${c.sym}">
+      <td><div class="tkr purple">${c.sym}</div><div class="tkr-sub">${c.name} · ${c.coins}</div></td>
+      <td>${c.coins}</td><td>${fmtPrice(d.c)}</td>
+      <td class="${pClass(d.dp)}">${pSign(d.dp)}${d.dp?.toFixed(2)}% 24hr</td>
+      <td>${$f(val)}</td>
+      <td class="${pClass(pl)}">${pSign(pl)}${$f(pl)}</td>
+      <td class="${pClass(plPct)}">${pSign(plPct)}${plPct.toFixed(1)}%</td>
+      <td><span class="badge b-spec">SPEC</span></td>
+    </tr>`;
+  }).join('');
+  const pl=tv-tc,plp=(pl/tc)*100;
+  document.getElementById('cryptoTotal').textContent=$f(tv);
+  document.getElementById('cryptoTotalPL').innerHTML=`<span class="${pClass(pl)}">${pSign(pl)}${$f(pl)}</span>`;
+  document.getElementById('cryptoTotalPct').innerHTML=`<span class="${pClass(plp)}">${pSign(plp)}${plp.toFixed(1)}%</span>`;
+}
+
+function renderAll() {
+  const tax=renderHoldings(TAXABLE,'taxBody');
+  const roth=renderHoldings(ROTH,'rothBody');
+  renderCrypto();
+  const gt=tax.totalVal+roth.totalVal, gc=tax.totalCost+roth.totalCost;
+  const gpl=gt-gc, gpct=(gpl/gc)*100;
+  document.getElementById('heroTotal').textContent='$'+gt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('heroTotal').style.color=gpl>=0?'var(--green)':'var(--red)';
+  document.getElementById('heroChange').innerHTML=`<span class="${pClass(gpl)}">${pSign(gpl)}${$f(gpl)} all time · ${pSign(gpct)}${gpct.toFixed(2)}%</span>`;
+  document.getElementById('allTimePL').innerHTML=`<span class="${pClass(gpl)}">${pSign(gpl)}${$f(gpl)}</span>`;
+  document.getElementById('todayPL').innerHTML=`<span class="${pClass(tax.totalDay+roth.totalDay)}">${pSign(tax.totalDay+roth.totalDay)}${$f(tax.totalDay+roth.totalDay)}</span>`;
+  ['tax','roth'].forEach(pre => {
+    const d=pre==='tax'?tax:roth;
+    document.getElementById(pre+'Val').textContent='$'+d.totalVal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const p=d.totalVal-d.totalCost,pp=(p/d.totalCost)*100;
+    document.getElementById(pre+'PL').innerHTML=`<span class="${pClass(p)}">${pSign(p)}${$f(p)} · ${pSign(pp)}${pp.toFixed(1)}%</span>`;
+    document.getElementById(pre+'Total').textContent='$'+d.totalVal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+    document.getElementById(pre+'TotalPL').innerHTML=`<span class="${pClass(p)}">${pSign(p)}${$f(p)}</span>`;
+    document.getElementById(pre+'TotalPct').innerHTML=`<span class="${pClass(p)}">${pSign(pp)}${pp.toFixed(1)}%</span>`;
+    document.getElementById(pre+'DayChg').innerHTML=`<span class="${pClass(d.totalDay)}">${pSign(d.totalDay)}${$f(d.totalDay)}</span>`;
+  });
+  document.getElementById('taxTag').textContent='$'+tax.totalVal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+}
+
+async function connectAPI() {
+  const key=document.getElementById('apiKeyInput').value.trim();
+  if(!key){document.getElementById('keyStatus').innerHTML='<span style="color:var(--amber)">⚠️ Paste your key first</span>';return;}
+  saveApiKey(key);
+  document.getElementById('keyStatus').innerHTML='<span class="spinner"></span><span class="muted">Testing...</span>';
+  await refreshPrices();
+  renderAll();
+  document.getElementById('keyStatus').innerHTML = apiConnected
+    ? '<span style="color:var(--green)">✅ Connected! Prices loading live.</span>'
+    : '<span style="color:var(--red)">❌ Key invalid — check finnhub.io</span>';
+}
+
+// Init
+seedPrices();
+renderAll();
+fetchCrypto().then(renderAll);
+if(apiKey) refreshPrices().then(renderAll);
+loadApiKey();
+startClocks();
+startPriceRefresh(renderAll);
+</script>
+</body>
+</html>
