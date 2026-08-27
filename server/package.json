@@ -7,6 +7,7 @@
   "scripts": {
     "init-db": "node scripts/init-db.js",
     "seed": "node scripts/seed.js",
+    "seed-recurring": "node scripts/seed-recurring.js",
     "validate-positions": "node scripts/validate-positions.js",
     "start": "node index.js"
   },
