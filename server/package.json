@@ -1,0 +1,19 @@
+{
+  "name": "portfolio-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "init-db": "node scripts/init-db.js",
+    "seed": "node scripts/seed.js",
+    "validate-positions": "node scripts/validate-positions.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.0",
+    "csv-parse": "^7.0.2",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}

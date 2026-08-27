@@ -1,0 +1,8 @@
+node_modules/
+.env
+data/raw/
+server/db/portfolio.db
+server/db/*.db
+server/db/*.db-journal
+server/db/*.db-wal
+server/db/*.db-shm
