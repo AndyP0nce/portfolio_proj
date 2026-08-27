@@ -30,9 +30,6 @@ function pSign(n) { return n >= 0 ? '+' : ''; }
 /** CSS class for positive/negative */
 function pClass(n) { return n >= 0 ? 'green' : 'red'; }
 
-/** Percentage of total */
-function pctOf(val, total) { return ((val / total) * 100).toFixed(1) + '%'; }
-
 /** Project portfolio value */
 function projectPortfolio(start, annualContrib, ratePercent, years) {
   let v = start;

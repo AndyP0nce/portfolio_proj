@@ -26,15 +26,12 @@ const SECURITY_META = {
   TQQQ: { name: 'ProShares UltraPro QQQ', type: 'etf', expense_ratio: 0.88 },
   AVUV: { name: 'Avantis U.S. Small Cap Value ETF', type: 'etf', expense_ratio: 0.25 },
   VXUS: { name: 'Vanguard Total International Stock ETF', type: 'etf', expense_ratio: 0.07 },
-  VTI: { name: 'Vanguard Total Stock Market ETF', type: 'etf', expense_ratio: 0.03 },
   NVDA: { name: 'NVIDIA Corp', type: 'stock' },
   IBM: { name: 'IBM Corp', type: 'stock' },
   KDP: { name: 'Keurig Dr Pepper', type: 'stock' },
   ET: { name: 'Energy Transfer LP', type: 'stock' },
   CSX: { name: 'CSX Corporation', type: 'stock' },
   JEPI: { name: 'JPMorgan Equity Premium Income ETF', type: 'etf', expense_ratio: 0.35 },
-  O: { name: 'Realty Income Corp', type: 'stock' },
-  DOW: { name: 'Dow Inc', type: 'stock' },
   SPCX: { name: 'SpaceX', type: 'private' },
 };
 
@@ -53,6 +50,12 @@ const SECURITY_META = {
 // real cost basis.
 const SYNTHETIC_OPENING_LOT_DATE = '2026-01-01';
 const SYNTHETIC_SOURCE = 'synthetic:pre-statement-opening-lot';
+
+// Positions fully exited before the current portfolio snapshot (Aug
+// 27, 2026) and not part of the tracked holdings list - excluded so
+// re-seeding doesn't resurrect them. Real historical activity, just
+// out of scope for what's being tracked now.
+const EXCLUDED_SYMBOLS = new Set(['DOW', 'O', 'VTI']);
 
 function parseMoney(raw) {
   if (raw == null) return null;
@@ -184,6 +187,10 @@ function seed() {
         }
 
         const symbol = (row['Instrument'] || '').trim();
+        if (EXCLUDED_SYMBOLS.has(symbol)) {
+          summary.skipped += 1;
+          continue;
+        }
         let securityId = null;
         if (symbol) {
           securityId = upsertSecurity(symbol);

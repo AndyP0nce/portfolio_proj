@@ -36,18 +36,20 @@
 <div class="hero">
   <div class="hero-top">
     <div>
-      <div class="hero-label">Live Portfolio · Finnhub + CoinGecko</div>
+      <div class="hero-label"> Portfolio </div>
       <div class="hero-total" id="heroTotal">$—</div>
       <div class="hero-change" id="heroChange" style="color:var(--muted)">Loading prices...</div>
     </div>
     <div class="pill-row">
-      <div class="pill"><div class="pill-label">Taxable</div><div class="pill-val" id="taxVal">$—</div><div class="pill-sub" id="taxPL">—</div></div>
+      <div class="pill"><div class="pill-label">Brokerage</div><div class="pill-val" id="taxVal">$—</div><div class="pill-sub" id="taxPL">—</div></div>
       <div class="pill"><div class="pill-label">Roth IRA</div><div class="pill-val" id="rothVal">$—</div><div class="pill-sub" id="rothPL">—</div></div>
     </div>
   </div>
   <div class="stat-strip">
     <div class="stat-box"><div class="stat-label">All-Time P&L</div><div class="stat-val" id="allTimePL">—</div><div class="stat-sub">vs cost basis</div></div>
     <div class="stat-box"><div class="stat-label">Today's P&L</div><div class="stat-val" id="todayPL">—</div><div class="stat-sub">vs prev close</div></div>
+    <div class="stat-box"><div class="stat-label">Brokerage Contributed</div><div class="stat-val" id="taxContributed">—</div><div class="stat-sub">cost basis · stocks + crypto</div></div>
+    <div class="stat-box"><div class="stat-label">Roth Contributed</div><div class="stat-val" id="rothContributed">—</div><div class="stat-sub">cost basis</div></div>
     <div class="stat-box"><div class="stat-label">Annual Divs</div><div class="stat-val amber">~$400</div><div class="stat-sub">~$33/mo · mostly Roth</div></div>
     <div class="stat-box"><div class="stat-label">Daily DCA</div><div class="stat-val green">$25.90</div><div class="stat-sub">$9,454/yr total</div></div>
     <div class="stat-box"><div class="stat-label">RH Match/yr</div><div class="stat-val green">~$224</div><div class="stat-sub">3% Roth · 1% Taxable</div></div>
@@ -114,7 +116,7 @@ function renderHoldings(holdings, tbodyId) {
       <td class="${pClass(day)}">${pSign(day)}${$f(day)} (${pSign(dayPct)}${dayPct.toFixed(2)}%)</td>
       <td class="${pClass(pl)}">${pSign(pl)}${$f(pl)}</td>
       <td class="${plPct!=null?pClass(plPct):'muted'}">${plPct!=null?pSign(plPct)+plPct.toFixed(1)+'%':'n/a (cost unknown)'}</td>
-      <td class="muted">—</td>
+      <td class="amber">${h.divYield}%</td>
     </tr>`;
   }).join('');
   return {totalVal,totalCost,totalDay};
@@ -122,12 +124,13 @@ function renderHoldings(holdings, tbodyId) {
 
 function renderCrypto() {
   const tbody=document.getElementById('cryptoBody');
-  let tv=0,tc=0;
+  let tv=0,tc=0,td=0;
   tbody.innerHTML = TAXABLE_CRYPTO.map(c => {
     const d=liveData[c.sym]||{c:c.seedPrice,pc:c.seedPrice,dp:0};
     const val=d.c*c.coins, cost=c.avgCost*c.coins;
     const pl=val-cost, plPct=(pl/cost)*100;
-    tv+=val; tc+=cost;
+    const day=(d.c-d.pc)*c.coins;
+    tv+=val; tc+=cost; td+=day;
     return `<tr id="row-${c.sym}">
       <td><div class="tkr purple">${c.sym}</div><div class="tkr-sub">${c.name} · ${c.coins}</div></td>
       <td>${c.coins}</td><td>${fmtPrice(d.c)}</td>
@@ -142,110 +145,90 @@ function renderCrypto() {
   document.getElementById('cryptoTotal').textContent=$f(tv);
   document.getElementById('cryptoTotalPL').innerHTML=`<span class="${pClass(pl)}">${pSign(pl)}${$f(pl)}</span>`;
   document.getElementById('cryptoTotalPct').innerHTML=`<span class="${pClass(plp)}">${pSign(plp)}${plp.toFixed(1)}%</span>`;
+  return {totalVal:tv, totalCost:tc, totalDay:td};
 }
 
 function renderAll() {
   const tax=renderHoldings(taxableHoldings,'taxBody');
   const roth=renderHoldings(rothHoldings,'rothBody');
-  renderCrypto();
-  const gt=tax.totalVal+roth.totalVal, gc=tax.totalCost+roth.totalCost;
+  const crypto=renderCrypto();
+
+  // Crypto is held inside the taxable/individual brokerage account
+  // (not a separate account) per the real Robinhood account structure,
+  // so the top-level Taxable figure (pill + grand total) includes it.
+  // The stocks table's own footer below stays stocks-only, since that
+  // table only lists stock/ETF rows - crypto has its own footer there.
+  const taxAccount = {
+    totalVal: tax.totalVal + crypto.totalVal,
+    totalCost: tax.totalCost + crypto.totalCost,
+    totalDay: tax.totalDay + crypto.totalDay,
+  };
+
+  const gt=taxAccount.totalVal+roth.totalVal, gc=taxAccount.totalCost+roth.totalCost;
   const gpl=gt-gc, gpct=(gpl/gc)*100;
   document.getElementById('heroTotal').textContent='$'+gt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('heroTotal').style.color=gpl>=0?'var(--green)':'var(--red)';
   document.getElementById('heroChange').innerHTML=`<span class="${pClass(gpl)}">${pSign(gpl)}${$f(gpl)} all time · ${pSign(gpct)}${gpct.toFixed(2)}%</span>`;
   document.getElementById('allTimePL').innerHTML=`<span class="${pClass(gpl)}">${pSign(gpl)}${$f(gpl)}</span>`;
-  document.getElementById('todayPL').innerHTML=`<span class="${pClass(tax.totalDay+roth.totalDay)}">${pSign(tax.totalDay+roth.totalDay)}${$f(tax.totalDay+roth.totalDay)}</span>`;
+  document.getElementById('todayPL').innerHTML=`<span class="${pClass(taxAccount.totalDay+roth.totalDay)}">${pSign(taxAccount.totalDay+roth.totalDay)}${$f(taxAccount.totalDay+roth.totalDay)}</span>`;
+  // Total Contributed = cost basis (avgCost × shares/coins, summed) -
+  // recomputed on every render from holdings.js, so it stays current
+  // automatically as shares/avgCost change, rather than a number
+  // that's typed in once and goes stale.
+  document.getElementById('taxContributed').textContent='$'+taxAccount.totalCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('rothContributed').textContent='$'+roth.totalCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  // Hero pills: Taxable includes crypto, Roth doesn't.
   ['tax','roth'].forEach(pre => {
-    const d=pre==='tax'?tax:roth;
+    const d=pre==='tax'?taxAccount:roth;
     document.getElementById(pre+'Val').textContent='$'+d.totalVal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
     const p=d.totalVal-d.totalCost,pp=(p/d.totalCost)*100;
     document.getElementById(pre+'PL').innerHTML=`<span class="${pClass(p)}">${pSign(p)}${$f(p)} · ${pSign(pp)}${pp.toFixed(1)}%</span>`;
+  });
+
+  // Table footers: each table's own subtotal, stocks-only / roth-only.
+  ['tax','roth'].forEach(pre => {
+    const d=pre==='tax'?tax:roth;
     document.getElementById(pre+'Total').textContent='$'+d.totalVal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+    const p=d.totalVal-d.totalCost,pp=(p/d.totalCost)*100;
     document.getElementById(pre+'TotalPL').innerHTML=`<span class="${pClass(p)}">${pSign(p)}${$f(p)}</span>`;
     document.getElementById(pre+'TotalPct').innerHTML=`<span class="${pClass(p)}">${pSign(pp)}${pp.toFixed(1)}%</span>`;
     document.getElementById(pre+'DayChg').innerHTML=`<span class="${pClass(d.totalDay)}">${pSign(d.totalDay)}${$f(d.totalDay)}</span>`;
   });
+
   document.getElementById('taxTag').textContent='$'+tax.totalVal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 }
 
-// Ticker color is display-only styling with no backend equivalent, so
-// it stays a client-side lookup. Symbols not listed fall back to muted
-// gray - this covers real positions (CSX, SPCX, VTI) that predate
-// data/holdings.js and never had a color assigned there.
-const TICKER_COLORS = {
-  SPY: 'var(--blue)', SCHD: 'var(--green)', TQQQ: 'var(--red)', NVDA: 'var(--teal)',
-  KDP: 'var(--amber)', ET: 'var(--orange)', CSX: 'var(--pink)',
-  AVUV: 'var(--pink)', VXUS: 'var(--teal)', JEPI: 'var(--purple)', IBM: 'var(--blue)',
-};
-
 let taxableHoldings = [];
 let rothHoldings = [];
-let backendOk = false;
 
-// Phase 7: holdings now come from /api/holdings (derived from
-// transactions) instead of the hardcoded data/holdings.js arrays.
-// Div Yield isn't computed server-side yet (that's Phase 8), so it
-// shows as "—" until then. avg_cost can be null for a position with
-// an unknown-cost synthetic opening lot (see server/scripts/seed.js) -
-// falls back to 0 rather than producing NaN P&L.
-//
-// Returns true/false rather than throwing: the local API server is a
-// separate process (`npm start` in server/) that may not be running,
-// and an uncaught rejection here used to leave the whole page stuck on
-// its "Loading..." placeholders forever with no visible error.
-async function loadHoldings() {
-  try {
-    const res = await fetch(`${API_BASE}/api/holdings`);
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    const rows = await res.json();
-    const toShape = (r) => ({
-      sym: r.symbol,
-      name: r.security_name,
-      type: r.security_type,
-      shares: r.quantity,
-      avgCost: r.avg_cost ?? 0,
-      color: TICKER_COLORS[r.symbol] || 'var(--muted)',
-    });
-    taxableHoldings = rows.filter(r => r.account_type === 'taxable').map(toShape);
-    rothHoldings = rows.filter(r => r.account_type === 'roth').map(toShape);
-    return true;
-  } catch (err) {
-    console.error('Could not load holdings from the API server:', err);
-    return false;
-  }
-}
-
-function showBackendError() {
-  const msg = `⚠️ Can't reach the API server at ${API_BASE} — run "npm start" in server/, then reload this page.`;
-  const row = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--red);font-family:var(--font-mono);font-size:11px;">${msg}</td></tr>`;
-  document.getElementById('taxBody').innerHTML = row;
-  document.getElementById('rothBody').innerHTML = row;
-  document.getElementById('heroChange').textContent = msg;
-  document.getElementById('heroChange').style.color = 'var(--red)';
+// Holdings come from data/holdings.js - the manually-maintained
+// portfolio snapshot - not /api/holdings. The DB's derived positions
+// are stale (they only reflect the original statement CSVs; there's
+// no updated statement data to re-seed from), so holdings.js is the
+// accurate source of shares/avgCost until real updated statements
+// exist. Only the *prices* are live (Finnhub/CoinGecko via
+// /api/quotes below) - shares and cost basis are exactly what's in
+// holdings.js, per an explicit decision to treat that file as
+// authoritative for now.
+function loadHoldings() {
+  taxableHoldings = TAXABLE;
+  rothHoldings = ROTH;
 }
 
 // Init
-async function init() {
-  backendOk = await loadHoldings();
-
-  if (backendOk) {
-    // refreshPrices() already fetches crypto (via fetchCrypto) as part
-    // of its Promise.all, so don't also fire it standalone below -
-    // CoinGecko's free/no-key tier has a low rate limit, and doubling
-    // every call adds up fast across reloads.
-    const allStocks = [...taxableHoldings, ...rothHoldings];
-    seedPrices(allStocks);
-    renderAll();
-    refreshPrices(allStocks).then(renderAll);
-    startPriceRefresh(renderAll, allStocks);
-  } else {
-    showBackendError();
-    // Crypto doesn't depend on the local API server, so it still
-    // works even when that's down - but only fetch it here, since the
-    // backendOk branch above already covers it via refreshPrices().
-    fetchCrypto().then(renderCrypto);
-  }
-
+function init() {
+  loadHoldings();
+  const allStocks = [...taxableHoldings, ...rothHoldings];
+  seedPrices(allStocks);
+  renderAll();
+  // refreshPrices() fetches both stocks (/api/quotes) and crypto
+  // (CoinGecko) in one go - if the local API server isn't running,
+  // fetchStocks() already degrades gracefully on its own (keeps
+  // showing avgCost, flips the status dot red) without blocking
+  // crypto or the rest of the page.
+  refreshPrices(allStocks).then(renderAll);
+  startPriceRefresh(renderAll, allStocks);
   startClocks();
 }
 init();
