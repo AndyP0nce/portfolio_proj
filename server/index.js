@@ -2,8 +2,17 @@ const express = require('express');
 const config = require('./config');
 const db = require('./db/connection');
 const { computePositions } = require('./lib/positions');
+const { getQuotes } = require('./lib/finnhub');
 
 const app = express();
+
+// Local-only tool with no auth - the frontend is opened as a plain
+// file:// page (or a static server on another port), so it's always
+// cross-origin from this API. Permissive CORS is fine here.
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  next();
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });
@@ -115,6 +124,22 @@ app.get('/api/transactions', (req, res) => {
 
   const rows = db.prepare(sql).all(...params);
   res.json(rows);
+});
+
+// Phase 6. ?symbols=SPY,SCHD,... comma-separated. Fetches live quotes
+// from Finnhub using FINNHUB_KEY from .env - the frontend no longer
+// holds or sends a key.
+app.get('/api/quotes', async (req, res) => {
+  const { symbols } = req.query;
+  if (!symbols) return res.status(400).json({ error: 'symbols query param required' });
+
+  const list = symbols.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+
+  try {
+    res.json(await getQuotes(list));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
 });
 
 app.listen(config.port, () => {

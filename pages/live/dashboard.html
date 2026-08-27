@@ -30,21 +30,9 @@
     <div class="clock-item">ET <span class="clock-val" id="etClock">--:--:--</span></div>
     <div class="font-mono" style="font-size:10px;display:flex;align-items:center;gap:6px;">
       <span id="apiDot" style="width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
-      <span id="apiLabel" class="muted">API: Enter key below</span>
+      <span id="apiLabel" class="muted">API: connecting...</span>
     </div>
     <div class="clock-item">↻ <span id="lastUpdate" class="dim">—</span></div>
-  </div>
-</div>
-<!-- API KEY INPUT -->
-<div style="margin:16px 24px;background:rgba(181,123,255,0.06);border:1px solid rgba(181,123,255,0.25);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-  <div>
-    <div style="font-family:var(--font-title);font-size:14px;letter-spacing:1px;color:var(--purple);">FINNHUB API KEY</div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:3px;">Free at finnhub.io · Real-time US stocks · Saved in your browser only</div>
-    <div id="keyStatus" style="font-family:var(--font-mono);font-size:10px;margin-top:5px;"></div>
-  </div>
-  <div style="display:flex;gap:10px;align-items:center;">
-    <input id="apiKeyInput" type="text" placeholder="Paste Finnhub key..." style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:9px 13px;font-family:var(--font-mono);font-size:11px;color:var(--text);outline:none;width:260px;">
-    <button onclick="connectAPI()" style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:var(--font-title);font-size:12px;letter-spacing:1px;cursor:pointer;">CONNECT</button>
   </div>
 </div>
 <!-- HERO -->
@@ -82,7 +70,7 @@
     <div class="sec-head"><div class="sec-title">Taxable Brokerage</div><div class="sec-line"></div><div class="sec-tag" id="taxTag">Individual</div></div>
     <div class="tbl-wrap"><table>
       <thead><tr><th>Asset</th><th>Shares</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>Value</th><th>All-Time P&L</th><th>%</th><th>Hi / Lo</th><th>Div Yield</th></tr></thead>
-      <tbody id="taxBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Enter API key to load live prices</td></tr></tbody>
+      <tbody id="taxBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading live prices...</td></tr></tbody>
       <tfoot><tr><td>TAXABLE TOTAL</td><td>—</td><td>—</td><td>—</td><td id="taxDayChg">—</td><td id="taxTotal">—</td><td id="taxTotalPL">—</td><td id="taxTotalPct">—</td><td>—</td><td class="green">~$124/yr</td></tr></tfoot>
     </table></div>
   </div>
@@ -91,7 +79,7 @@
     <div class="sec-head"><div class="sec-title">Roth IRA</div><div class="sec-line"></div><div class="sec-tag">Tax-Free Growth</div></div>
     <div class="tbl-wrap"><table>
       <thead><tr><th>Asset</th><th>Shares</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>Value</th><th>All-Time P&L</th><th>%</th><th>Hi / Lo</th><th>Div Yield</th></tr></thead>
-      <tbody id="rothBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Enter API key to load live prices</td></tr></tbody>
+      <tbody id="rothBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading live prices...</td></tr></tbody>
       <tfoot><tr><td>ROTH IRA TOTAL</td><td>—</td><td>—</td><td>—</td><td id="rothDayChg">—</td><td id="rothTotal">—</td><td id="rothTotalPL">—</td><td id="rothTotalPct">—</td><td>—</td><td class="green">~$276/yr TAX-FREE</td></tr></tfoot>
     </table></div>
   </div>
@@ -105,7 +93,7 @@
     </table></div>
   </div>
 </div>
-<footer>FINNHUB REAL-TIME · COINGECKO CRYPTO · API KEY STORED IN BROWSER ONLY · NOT FINANCIAL ADVICE</footer>
+<footer>FINNHUB REAL-TIME (SERVER-SIDE) · COINGECKO CRYPTO · NOT FINANCIAL ADVICE</footer>
 <script src="../../data/holdings.js"></script>
 <script src="../../js/utils.js"></script>
 <script src="../../js/market.js"></script>
@@ -184,24 +172,11 @@ function renderAll() {
   document.getElementById('taxTag').textContent='$'+tax.totalVal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 }
 
-async function connectAPI() {
-  const key=document.getElementById('apiKeyInput').value.trim();
-  if(!key){document.getElementById('keyStatus').innerHTML='<span style="color:var(--amber)">⚠️ Paste your key first</span>';return;}
-  saveApiKey(key);
-  document.getElementById('keyStatus').innerHTML='<span class="spinner"></span><span class="muted">Testing...</span>';
-  await refreshPrices();
-  renderAll();
-  document.getElementById('keyStatus').innerHTML = apiConnected
-    ? '<span style="color:var(--green)">✅ Connected! Prices loading live.</span>'
-    : '<span style="color:var(--red)">❌ Key invalid — check finnhub.io</span>';
-}
-
 // Init
 seedPrices();
 renderAll();
 fetchCrypto().then(renderAll);
-if(apiKey) refreshPrices().then(renderAll);
-loadApiKey();
+refreshPrices().then(renderAll);
 startClocks();
 startPriceRefresh(renderAll);
 </script>

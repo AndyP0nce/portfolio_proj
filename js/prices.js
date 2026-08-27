@@ -1,9 +1,13 @@
 /* ══════════════════════════════════════════
-   PRICE FETCHING — Finnhub + CoinGecko
+   PRICE FETCHING — Finnhub (server-side) + CoinGecko
    ══════════════════════════════════════════ */
 
+// Finnhub quotes are fetched through the local API server now (see
+// server/lib/finnhub.js) - it holds FINNHUB_KEY in .env, so the
+// frontend never handles a key at all.
+const API_BASE = 'http://localhost:3000';
+
 const liveData = {};
-let apiKey = localStorage.getItem('finnhub_key') || '';
 let apiConnected = false;
 
 /** Seed all holdings with last known prices */
@@ -16,52 +20,45 @@ function seedPrices() {
   });
 }
 
-/** Save Finnhub API key */
-function saveApiKey(key) {
-  if (!key) return;
-  apiKey = key.trim();
-  localStorage.setItem('finnhub_key', apiKey);
-}
-
-/** Load key from storage into input if present */
-function loadApiKey() {
-  const input = document.getElementById('apiKeyInput');
-  if (input && apiKey) {
-    input.value = apiKey;
-  }
-}
-
-/** Fetch all stock/ETF prices from Finnhub */
+/** Fetch all stock/ETF prices from the local API's /api/quotes */
 async function fetchStocks() {
-  if (!apiKey) return;
   const holdings = [...TAXABLE, ...ROTH];
+  const symbols = [...new Set(holdings.map(h => h.sym))];
   let hits = 0;
 
-  for (const h of holdings) {
-    try {
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${h.sym}&token=${apiKey}`);
-      if (!res.ok) continue;
-      const d = await res.json();
-      if (d.c && d.c > 0) {
-        const prev = liveData[h.sym]?.c || h.seedPrice;
-        liveData[h.sym] = { c: d.c, pc: d.pc, h: d.h, l: d.l, dp: d.dp, d: d.d };
-        // Flash row if price changed
-        if (prev !== d.c) {
-          const row = document.getElementById('row-' + h.sym);
-          if (row) {
-            row.classList.remove('flash-g', 'flash-r');
-            void row.offsetWidth;
-            row.classList.add(d.c > prev ? 'flash-g' : 'flash-r');
-          }
-        }
-        hits++;
-      }
-      await new Promise(r => setTimeout(r, 120)); // rate limit spacing
-    } catch(e) { /* keep seed */ }
+  let quotes;
+  try {
+    const res = await fetch(`${API_BASE}/api/quotes?symbols=${symbols.join(',')}`);
+    if (!res.ok) throw new Error('quotes request failed');
+    quotes = await res.json();
+  } catch (e) {
+    apiConnected = false;
+    updateApiIndicator(0, symbols.length);
+    updateLastUpdate();
+    return;
   }
 
+  const bySymbol = Object.fromEntries(quotes.map(q => [q.symbol, q]));
+
+  holdings.forEach(h => {
+    const d = bySymbol[h.sym];
+    if (!d) return;
+    const prev = liveData[h.sym]?.c || h.seedPrice;
+    liveData[h.sym] = { c: d.c, pc: d.pc, h: d.h, l: d.l, dp: d.dp, d: d.d };
+    // Flash row if price changed
+    if (prev !== d.c) {
+      const row = document.getElementById('row-' + h.sym);
+      if (row) {
+        row.classList.remove('flash-g', 'flash-r');
+        void row.offsetWidth;
+        row.classList.add(d.c > prev ? 'flash-g' : 'flash-r');
+      }
+    }
+    hits++;
+  });
+
   apiConnected = hits > 0;
-  updateApiIndicator(hits, holdings.length);
+  updateApiIndicator(hits, symbols.length);
   updateLastUpdate();
 }
 
@@ -104,7 +101,7 @@ function updateApiIndicator(hits, total) {
   } else {
     dot.style.background  = 'var(--red)';
     label.style.color     = 'var(--red)';
-    label.textContent     = 'API: Check key';
+    label.textContent     = 'API: server unreachable';
   }
 }
 
