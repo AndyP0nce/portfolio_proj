@@ -1,4 +1,5 @@
 const express = require('express');
+const cron = require('node-cron');
 const config = require('./config');
 const db = require('./db/connection');
 const { computePositions } = require('./lib/positions');
@@ -6,6 +7,7 @@ const { getQuotes } = require('./lib/finnhub');
 const { estimateDividends } = require('./lib/dividends');
 const { projectGrowth, projectDepositsOnly } = require('./lib/projections');
 const { analyzeTax } = require('./lib/tax');
+const { runDailyDca } = require('./lib/dailyDca');
 
 const app = express();
 
@@ -198,6 +200,21 @@ app.get('/api/tax-analysis', async (req, res) => {
 
   res.json(analyzeTax(positions, dividends, pricesBySymbol));
 });
+
+// Phase 9. Daily DCA: buys every active recurring_config row at
+// today's price and snapshots price_history for every security.
+// Runs at 22:00 America/New_York - after regular US market close, so
+// Finnhub's quote is that day's closing price. Logic lives in
+// server/lib/dailyDca.js; see server/scripts/run-daily-dca.js to run
+// it on demand instead of waiting for the schedule.
+cron.schedule('0 22 * * *', async () => {
+  try {
+    const summary = await runDailyDca();
+    console.log('[cron] daily DCA run:', summary);
+  } catch (err) {
+    console.error('[cron] daily DCA run failed:', err);
+  }
+}, { timezone: 'America/New_York' });
 
 app.listen(config.port, () => {
   console.log(`Server listening on http://localhost:${config.port}`);

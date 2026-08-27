@@ -14,9 +14,6 @@
   <div class="nav-links">
     <a class="nav-link" href="../../index.html">Overview</a>
     <a class="nav-link active" href="dashboard.html">Live Dashboard</a>
-    <a class="nav-link" href="../charts/charts.html">Charts</a>
-    <a class="nav-link" href="../projection/projection.html">Projection</a>
-    <a class="nav-link" href="../analysis/analysis.html">Tax &amp; Fees</a>
   </div>
 </nav>
 <!-- STATUS BAR -->
@@ -204,6 +201,7 @@ async function loadHoldings() {
     const toShape = (r) => ({
       sym: r.symbol,
       name: r.security_name,
+      type: r.security_type,
       shares: r.quantity,
       avgCost: r.avg_cost ?? 0,
       color: TICKER_COLORS[r.symbol] || 'var(--muted)',

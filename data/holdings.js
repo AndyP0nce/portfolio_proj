@@ -15,9 +15,9 @@ const TAXABLE = [
 ];
 
 const TAXABLE_CRYPTO = [
-  { sym:'BTC',  name:'Bitcoin',  coins:0.01101801, avgCost:88894, seedPrice:95000, dca:1.00, color:'var(--purple)' },
-  { sym:'ETH',  name:'Ethereum', coins:0.051097,   avgCost:2743,  seedPrice:1820,  dca:0,    color:'var(--purple)' },
-  { sym:'DOGE', name:'Dogecoin', coins:520.03,     avgCost:0.177, seedPrice:0.100, dca:0,    color:'var(--red)'    },
+  { sym:'BTC',  name:'Bitcoin',  coins:0.01176942, avgCost:88894, seedPrice:79991, dca:1.00, color:'var(--purple)' },
+  { sym:'ETH',  name:'Ethereum', coins:0.051097,   avgCost:2743,  seedPrice:2534,  dca:0,    color:'var(--purple)' },
+  { sym:'DOGE', name:'Dogecoin', coins:520.03,     avgCost:0.177, seedPrice:0.0888,dca:0,    color:'var(--red)'    },
 ];
 
 const ROTH = [

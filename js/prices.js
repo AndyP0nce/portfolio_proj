@@ -24,7 +24,12 @@ function seedPrices(holdings) {
 
 /** Fetch stock/ETF prices for the given holdings from the local API's /api/quotes */
 async function fetchStocks(holdings) {
-  const symbols = [...new Set(holdings.map(h => h.sym))];
+  // 'private' holdings (e.g. SPCX/SpaceX) aren't publicly quotable -
+  // Finnhub's free tier can silently match an unrelated real ticker
+  // with the same letters instead of erroring, so these must never be
+  // requested at all rather than trusting whatever price comes back.
+  const quotable = holdings.filter(h => h.type !== 'private');
+  const symbols = [...new Set(quotable.map(h => h.sym))];
   let hits = 0;
 
   let quotes;
@@ -34,14 +39,14 @@ async function fetchStocks(holdings) {
     quotes = await res.json();
   } catch (e) {
     apiConnected = false;
-    updateApiIndicator(0, holdings.length);
+    updateApiIndicator(0, quotable.length);
     updateLastUpdate();
     return;
   }
 
   const bySymbol = Object.fromEntries(quotes.map(q => [q.symbol, q]));
 
-  holdings.forEach(h => {
+  quotable.forEach(h => {
     const d = bySymbol[h.sym];
     if (!d) return;
     const prev = liveData[h.sym]?.c || h.avgCost;
@@ -59,14 +64,32 @@ async function fetchStocks(holdings) {
   });
 
   apiConnected = hits > 0;
-  updateApiIndicator(hits, holdings.length);
+  updateApiIndicator(hits, quotable.length);
   updateLastUpdate();
 }
 
-/** Fetch crypto from CoinGecko (no key needed) */
+// CoinGecko's free/no-key tier has a tight rate limit, easily blown
+// through by dev-server auto-reloads (each fresh page load used to
+// fire a brand new call). A short localStorage cache survives across
+// reloads - unlike an in-memory variable - so a burst of reloads
+// within the window reuses the last successful fetch instead of
+// hitting CoinGecko again. A 429 response also often omits CORS
+// headers, so the browser reports it as a CORS error on top of the
+// real rate-limit failure - both point back to the same cause.
+const CRYPTO_CACHE_KEY = 'crypto_price_cache';
+const CRYPTO_CACHE_TTL_MS = 60000;
+
+/** Fetch crypto from CoinGecko (no key needed), via a short local cache */
 async function fetchCrypto() {
   try {
-    const ids = TAXABLE_CRYPTO.map(c => c.id || c.sym.toLowerCase()).join(',');
+    const cached = JSON.parse(localStorage.getItem(CRYPTO_CACHE_KEY) || 'null');
+    if (cached && Date.now() - cached.ts < CRYPTO_CACHE_TTL_MS) {
+      Object.assign(liveData, cached.data);
+      return;
+    }
+  } catch (e) { /* corrupt/missing cache - fall through to a real fetch */ }
+
+  try {
     const cgIds = 'bitcoin,ethereum,dogecoin';
     const res = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd&include_24hr_change=true`
@@ -74,10 +97,11 @@ async function fetchCrypto() {
     if (!res.ok) return;
     const d = await res.json();
     const map = { BTC: d.bitcoin, ETH: d.ethereum, DOGE: d.dogecoin };
+    const cryptoData = {};
     TAXABLE_CRYPTO.forEach(c => {
       if (map[c.sym]) {
         const price = map[c.sym].usd;
-        liveData[c.sym] = {
+        cryptoData[c.sym] = {
           c:  price,
           pc: price / (1 + (map[c.sym].usd_24h_change || 0) / 100),
           dp: map[c.sym].usd_24h_change || 0,
@@ -85,7 +109,11 @@ async function fetchCrypto() {
         };
       }
     });
-  } catch(e) { /* keep seed */ }
+    Object.assign(liveData, cryptoData);
+    try {
+      localStorage.setItem(CRYPTO_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: cryptoData }));
+    } catch (e) { /* storage full/blocked - just skip caching this round */ }
+  } catch(e) { /* keep seed/cached values */ }
 }
 
 /** Update API connected indicator in UI */

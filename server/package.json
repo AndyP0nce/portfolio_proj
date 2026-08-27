@@ -9,12 +9,14 @@
     "seed": "node scripts/seed.js",
     "seed-recurring": "node scripts/seed-recurring.js",
     "validate-positions": "node scripts/validate-positions.js",
+    "run-daily-dca": "node scripts/run-daily-dca.js",
     "start": "node index.js"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.0",
     "csv-parse": "^7.0.2",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "node-cron": "^4.6.0"
   }
 }
