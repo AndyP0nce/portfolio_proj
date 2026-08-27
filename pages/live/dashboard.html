@@ -69,18 +69,18 @@
   <div>
     <div class="sec-head"><div class="sec-title">Taxable Brokerage</div><div class="sec-line"></div><div class="sec-tag" id="taxTag">Individual</div></div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>Asset</th><th>Shares</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>Value</th><th>All-Time P&L</th><th>%</th><th>Hi / Lo</th><th>Div Yield</th></tr></thead>
-      <tbody id="taxBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading live prices...</td></tr></tbody>
-      <tfoot><tr><td>TAXABLE TOTAL</td><td>—</td><td>—</td><td>—</td><td id="taxDayChg">—</td><td id="taxTotal">—</td><td id="taxTotalPL">—</td><td id="taxTotalPct">—</td><td>—</td><td class="green">~$124/yr</td></tr></tfoot>
+      <thead><tr><th>Asset</th><th>Shares</th><th>Value</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>All-Time P&L</th><th>%</th><th>Div Yield</th></tr></thead>
+      <tbody id="taxBody"><tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading live prices...</td></tr></tbody>
+      <tfoot><tr><td>TAXABLE TOTAL</td><td>—</td><td id="taxTotal">—</td><td>—</td><td>—</td><td id="taxDayChg">—</td><td id="taxTotalPL">—</td><td id="taxTotalPct">—</td><td class="green">~$124/yr</td></tr></tfoot>
     </table></div>
   </div>
   <!-- ROTH TABLE -->
   <div>
     <div class="sec-head"><div class="sec-title">Roth IRA</div><div class="sec-line"></div><div class="sec-tag">Tax-Free Growth</div></div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>Asset</th><th>Shares</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>Value</th><th>All-Time P&L</th><th>%</th><th>Hi / Lo</th><th>Div Yield</th></tr></thead>
-      <tbody id="rothBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading live prices...</td></tr></tbody>
-      <tfoot><tr><td>ROTH IRA TOTAL</td><td>—</td><td>—</td><td>—</td><td id="rothDayChg">—</td><td id="rothTotal">—</td><td id="rothTotalPL">—</td><td id="rothTotalPct">—</td><td>—</td><td class="green">~$276/yr TAX-FREE</td></tr></tfoot>
+      <thead><tr><th>Asset</th><th>Shares</th><th>Value</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>All-Time P&L</th><th>%</th><th>Div Yield</th></tr></thead>
+      <tbody id="rothBody"><tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading live prices...</td></tr></tbody>
+      <tfoot><tr><td>ROTH IRA TOTAL</td><td>—</td><td id="rothTotal">—</td><td>—</td><td>—</td><td id="rothDayChg">—</td><td id="rothTotalPL">—</td><td id="rothTotalPct">—</td><td class="green">~$276/yr TAX-FREE</td></tr></tfoot>
     </table></div>
   </div>
   <!-- CRYPTO TABLE -->
@@ -111,13 +111,12 @@ function renderHoldings(holdings, tbodyId) {
     return `<tr id="row-${h.sym}">
       <td><div class="tkr" style="color:${h.color}">${h.sym}</div><div class="tkr-sub">${h.name}</div></td>
       <td>${h.shares<1?h.shares.toFixed(5):h.shares}</td>
+      <td>${$f(val)}</td>
       <td>${fmtPrice(d.c)}</td>
       <td style="color:var(--muted)">${fmtPrice(d.pc)}</td>
       <td class="${pClass(day)}">${pSign(day)}${$f(day)} (${pSign(dayPct)}${dayPct.toFixed(2)}%)</td>
-      <td>${$f(val)}</td>
       <td class="${pClass(pl)}">${pSign(pl)}${$f(pl)}</td>
       <td class="${plPct!=null?pClass(plPct):'muted'}">${plPct!=null?pSign(plPct)+plPct.toFixed(1)+'%':'n/a (cost unknown)'}</td>
-      <td style="color:var(--muted);font-size:11px;">${d.h?$f(d.h*h.shares):'—'} / ${d.l?$f(d.l*h.shares):'—'}</td>
       <td class="muted">—</td>
     </tr>`;
   }).join('');
@@ -184,6 +183,7 @@ const TICKER_COLORS = {
 
 let taxableHoldings = [];
 let rothHoldings = [];
+let backendOk = false;
 
 // Phase 7: holdings now come from /api/holdings (derived from
 // transactions) instead of the hardcoded data/holdings.js arrays.
@@ -191,30 +191,64 @@ let rothHoldings = [];
 // shows as "—" until then. avg_cost can be null for a position with
 // an unknown-cost synthetic opening lot (see server/scripts/seed.js) -
 // falls back to 0 rather than producing NaN P&L.
+//
+// Returns true/false rather than throwing: the local API server is a
+// separate process (`npm start` in server/) that may not be running,
+// and an uncaught rejection here used to leave the whole page stuck on
+// its "Loading..." placeholders forever with no visible error.
 async function loadHoldings() {
-  const res = await fetch(`${API_BASE}/api/holdings`);
-  const rows = await res.json();
-  const toShape = (r) => ({
-    sym: r.symbol,
-    name: r.security_name,
-    shares: r.quantity,
-    avgCost: r.avg_cost ?? 0,
-    color: TICKER_COLORS[r.symbol] || 'var(--muted)',
-  });
-  taxableHoldings = rows.filter(r => r.account_type === 'taxable').map(toShape);
-  rothHoldings = rows.filter(r => r.account_type === 'roth').map(toShape);
+  try {
+    const res = await fetch(`${API_BASE}/api/holdings`);
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const rows = await res.json();
+    const toShape = (r) => ({
+      sym: r.symbol,
+      name: r.security_name,
+      shares: r.quantity,
+      avgCost: r.avg_cost ?? 0,
+      color: TICKER_COLORS[r.symbol] || 'var(--muted)',
+    });
+    taxableHoldings = rows.filter(r => r.account_type === 'taxable').map(toShape);
+    rothHoldings = rows.filter(r => r.account_type === 'roth').map(toShape);
+    return true;
+  } catch (err) {
+    console.error('Could not load holdings from the API server:', err);
+    return false;
+  }
+}
+
+function showBackendError() {
+  const msg = `⚠️ Can't reach the API server at ${API_BASE} — run "npm start" in server/, then reload this page.`;
+  const row = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--red);font-family:var(--font-mono);font-size:11px;">${msg}</td></tr>`;
+  document.getElementById('taxBody').innerHTML = row;
+  document.getElementById('rothBody').innerHTML = row;
+  document.getElementById('heroChange').textContent = msg;
+  document.getElementById('heroChange').style.color = 'var(--red)';
 }
 
 // Init
 async function init() {
-  await loadHoldings();
-  const allStocks = [...taxableHoldings, ...rothHoldings];
-  seedPrices(allStocks);
-  renderAll();
-  fetchCrypto().then(renderAll);
-  refreshPrices(allStocks).then(renderAll);
+  backendOk = await loadHoldings();
+
+  if (backendOk) {
+    // refreshPrices() already fetches crypto (via fetchCrypto) as part
+    // of its Promise.all, so don't also fire it standalone below -
+    // CoinGecko's free/no-key tier has a low rate limit, and doubling
+    // every call adds up fast across reloads.
+    const allStocks = [...taxableHoldings, ...rothHoldings];
+    seedPrices(allStocks);
+    renderAll();
+    refreshPrices(allStocks).then(renderAll);
+    startPriceRefresh(renderAll, allStocks);
+  } else {
+    showBackendError();
+    // Crypto doesn't depend on the local API server, so it still
+    // works even when that's down - but only fetch it here, since the
+    // backendOk branch above already covers it via refreshPrices().
+    fetchCrypto().then(renderCrypto);
+  }
+
   startClocks();
-  startPriceRefresh(renderAll, allStocks);
 }
 init();
 </script>

@@ -17,7 +17,7 @@ function computePositions(db) {
   const rows = db.prepare(`
     SELECT t.account_id, a.name AS account, a.type AS account_type,
            t.security_id, s.symbol, s.name AS security_name, s.type AS security_type,
-           t.type, t.quantity, t.price, t.fee
+           s.expense_ratio, t.type, t.quantity, t.price, t.fee
     FROM transactions t
     JOIN accounts a ON a.id = t.account_id
     JOIN securities s ON s.id = t.security_id
@@ -38,6 +38,7 @@ function computePositions(db) {
         symbol: row.symbol,
         security_name: row.security_name,
         security_type: row.security_type,
+        expense_ratio: row.expense_ratio,
         quantity: 0,
         cost_basis: 0,
         cost_basis_quantity: 0,
@@ -79,6 +80,7 @@ function computePositions(db) {
       symbol: pos.symbol,
       security_name: pos.security_name,
       security_type: pos.security_type,
+      expense_ratio: pos.expense_ratio,
       quantity: round(pos.quantity),
       avg_cost: pos.cost_basis_quantity > 0 ? round(pos.cost_basis / pos.cost_basis_quantity) : null,
       cost_basis: round(pos.cost_basis),

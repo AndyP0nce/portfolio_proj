@@ -17,19 +17,22 @@ const STATEMENT_FILES = [
 
 // Metadata Robinhood's CSV doesn't reliably give us (Description text
 // is inconsistent - some rows have full names, some just the symbol).
+// expense_ratio is the fund's real published annual ratio (as a
+// percent, e.g. 0.09 = 0.09%/yr) - null for individual stocks/private
+// holdings, which don't have one. Used by Phase 8's fee-drag analysis.
 const SECURITY_META = {
-  SPY: { name: 'SPDR S&P 500 ETF Trust', type: 'etf' },
-  SCHD: { name: 'Schwab US Dividend Equity ETF', type: 'etf' },
-  TQQQ: { name: 'ProShares UltraPro QQQ', type: 'etf' },
-  AVUV: { name: 'Avantis U.S. Small Cap Value ETF', type: 'etf' },
-  VXUS: { name: 'Vanguard Total International Stock ETF', type: 'etf' },
-  VTI: { name: 'Vanguard Total Stock Market ETF', type: 'etf' },
+  SPY: { name: 'SPDR S&P 500 ETF Trust', type: 'etf', expense_ratio: 0.09 },
+  SCHD: { name: 'Schwab US Dividend Equity ETF', type: 'etf', expense_ratio: 0.06 },
+  TQQQ: { name: 'ProShares UltraPro QQQ', type: 'etf', expense_ratio: 0.88 },
+  AVUV: { name: 'Avantis U.S. Small Cap Value ETF', type: 'etf', expense_ratio: 0.25 },
+  VXUS: { name: 'Vanguard Total International Stock ETF', type: 'etf', expense_ratio: 0.07 },
+  VTI: { name: 'Vanguard Total Stock Market ETF', type: 'etf', expense_ratio: 0.03 },
   NVDA: { name: 'NVIDIA Corp', type: 'stock' },
   IBM: { name: 'IBM Corp', type: 'stock' },
   KDP: { name: 'Keurig Dr Pepper', type: 'stock' },
   ET: { name: 'Energy Transfer LP', type: 'stock' },
   CSX: { name: 'CSX Corporation', type: 'stock' },
-  JEPI: { name: 'JPMorgan Equity Premium Income ETF', type: 'etf' },
+  JEPI: { name: 'JPMorgan Equity Premium Income ETF', type: 'etf', expense_ratio: 0.35 },
   O: { name: 'Realty Income Corp', type: 'stock' },
   DOW: { name: 'Dow Inc', type: 'stock' },
   SPCX: { name: 'SpaceX', type: 'private' },
@@ -126,6 +129,11 @@ function upsertSecurity(symbol) {
   db.prepare(
     'INSERT OR IGNORE INTO securities (symbol, name, type) VALUES (?, ?, ?)'
   ).run(symbol, meta.name, meta.type);
+  // INSERT OR IGNORE no-ops on a symbol already seeded, so backfill
+  // expense_ratio separately - otherwise re-running seed.js after
+  // adding a new SECURITY_META field would never apply it to rows
+  // inserted before that field existed.
+  db.prepare('UPDATE securities SET expense_ratio = ? WHERE symbol = ?').run(meta.expense_ratio ?? null, symbol);
   return db.prepare('SELECT id FROM securities WHERE symbol = ?').get(symbol).id;
 }
 

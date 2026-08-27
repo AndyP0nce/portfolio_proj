@@ -3,14 +3,29 @@ const config = require('./config');
 const db = require('./db/connection');
 const { computePositions } = require('./lib/positions');
 const { getQuotes } = require('./lib/finnhub');
+const { estimateDividends } = require('./lib/dividends');
+const { projectGrowth, projectDepositsOnly } = require('./lib/projections');
+const { analyzeTax } = require('./lib/tax');
 
 const app = express();
 
 // Local-only tool with no auth - the frontend is opened as a plain
 // file:// page (or a static server on another port), so it's always
 // cross-origin from this API. Permissive CORS is fine here.
+//
+// Access-Control-Allow-Private-Network answers Chrome's Private
+// Network Access preflight, which a file:// (or other public-address-
+// space) page must pass before it's allowed to fetch a loopback
+// address like this server - without it, Chrome silently fails the
+// fetch even though the server is up and Allow-Origin is already '*'.
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Private-Network', 'true');
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    return res.sendStatus(204);
+  }
   next();
 });
 
@@ -140,6 +155,48 @@ app.get('/api/quotes', async (req, res) => {
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
+});
+
+// Phase 8. ?asOf=YYYY-MM-DD overrides "today" for annualizing (mainly
+// for testing) - defaults to now.
+app.get('/api/dividends', (req, res) => {
+  const { asOf } = req.query;
+  res.json(estimateDividends(db, { asOf }));
+});
+
+// Phase 8. Same compounding math the (currently unwired) projection
+// page used client-side, now server-authoritative. Query params:
+// start, annual (contribution/yr), years - all required.
+app.get('/api/projections', (req, res) => {
+  const start = parseFloat(req.query.start);
+  const annual = parseFloat(req.query.annual);
+  const years = parseInt(req.query.years, 10);
+
+  if (!Number.isFinite(start) || !Number.isFinite(annual) || !Number.isInteger(years) || years <= 0) {
+    return res.status(400).json({ error: 'start, annual, and years (positive integer) are required' });
+  }
+
+  res.json({
+    rate8: projectGrowth(start, annual, 8, years),
+    rate6: projectGrowth(start, annual, 6, years),
+    rate4: projectGrowth(start, annual, 4, years),
+    depositsOnly: projectDepositsOnly(start, annual, years),
+  });
+});
+
+// Phase 8. Replaces the hardcoded tables in pages/analysis/analysis.js
+// with numbers derived from real positions + real dividend history.
+// Fetches live quotes for fee-drag market value; a symbol Finnhub
+// can't price (e.g. SPCX) falls back to cost basis, same as elsewhere.
+app.get('/api/tax-analysis', async (req, res) => {
+  const positions = computePositions(db).filter((p) => Math.abs(p.quantity) > 1e-6);
+  const dividends = estimateDividends(db);
+
+  const symbols = [...new Set(positions.map((p) => p.symbol))];
+  const quotes = await getQuotes(symbols);
+  const pricesBySymbol = Object.fromEntries(quotes.map((q) => [q.symbol, q.c]));
+
+  res.json(analyzeTax(positions, dividends, pricesBySymbol));
 });
 
 app.listen(config.port, () => {
