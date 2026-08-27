@@ -103,9 +103,9 @@ function renderHoldings(holdings, tbodyId) {
   const tbody = document.getElementById(tbodyId);
   let totalVal=0,totalCost=0,totalDay=0;
   tbody.innerHTML = holdings.map(h => {
-    const d = liveData[h.sym] || {c:h.seedPrice,pc:h.seedPrice,h:h.seedPrice,l:h.seedPrice,dp:0};
+    const d = liveData[h.sym] || {c:h.avgCost,pc:h.avgCost,h:h.avgCost,l:h.avgCost,dp:0};
     const val=d.c*h.shares, cost=h.avgCost*h.shares;
-    const pl=val-cost, plPct=(pl/cost)*100;
+    const pl=val-cost, plPct=cost>0?(pl/cost)*100:null;
     const day=(d.c-d.pc)*h.shares, dayPct=d.dp||((d.c-d.pc)/d.pc*100);
     totalVal+=val; totalCost+=cost; totalDay+=day;
     return `<tr id="row-${h.sym}">
@@ -116,9 +116,9 @@ function renderHoldings(holdings, tbodyId) {
       <td class="${pClass(day)}">${pSign(day)}${$f(day)} (${pSign(dayPct)}${dayPct.toFixed(2)}%)</td>
       <td>${$f(val)}</td>
       <td class="${pClass(pl)}">${pSign(pl)}${$f(pl)}</td>
-      <td class="${pClass(plPct)}">${pSign(plPct)}${plPct.toFixed(1)}%</td>
+      <td class="${plPct!=null?pClass(plPct):'muted'}">${plPct!=null?pSign(plPct)+plPct.toFixed(1)+'%':'n/a (cost unknown)'}</td>
       <td style="color:var(--muted);font-size:11px;">${d.h?$f(d.h*h.shares):'—'} / ${d.l?$f(d.l*h.shares):'—'}</td>
-      <td class="amber">${h.divYield}%</td>
+      <td class="muted">—</td>
     </tr>`;
   }).join('');
   return {totalVal,totalCost,totalDay};
@@ -149,8 +149,8 @@ function renderCrypto() {
 }
 
 function renderAll() {
-  const tax=renderHoldings(TAXABLE,'taxBody');
-  const roth=renderHoldings(ROTH,'rothBody');
+  const tax=renderHoldings(taxableHoldings,'taxBody');
+  const roth=renderHoldings(rothHoldings,'rothBody');
   renderCrypto();
   const gt=tax.totalVal+roth.totalVal, gc=tax.totalCost+roth.totalCost;
   const gpl=gt-gc, gpct=(gpl/gc)*100;
@@ -172,13 +172,51 @@ function renderAll() {
   document.getElementById('taxTag').textContent='$'+tax.totalVal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 }
 
+// Ticker color is display-only styling with no backend equivalent, so
+// it stays a client-side lookup. Symbols not listed fall back to muted
+// gray - this covers real positions (CSX, SPCX, VTI) that predate
+// data/holdings.js and never had a color assigned there.
+const TICKER_COLORS = {
+  SPY: 'var(--blue)', SCHD: 'var(--green)', TQQQ: 'var(--red)', NVDA: 'var(--teal)',
+  KDP: 'var(--amber)', ET: 'var(--orange)', CSX: 'var(--pink)',
+  AVUV: 'var(--pink)', VXUS: 'var(--teal)', JEPI: 'var(--purple)', IBM: 'var(--blue)',
+};
+
+let taxableHoldings = [];
+let rothHoldings = [];
+
+// Phase 7: holdings now come from /api/holdings (derived from
+// transactions) instead of the hardcoded data/holdings.js arrays.
+// Div Yield isn't computed server-side yet (that's Phase 8), so it
+// shows as "—" until then. avg_cost can be null for a position with
+// an unknown-cost synthetic opening lot (see server/scripts/seed.js) -
+// falls back to 0 rather than producing NaN P&L.
+async function loadHoldings() {
+  const res = await fetch(`${API_BASE}/api/holdings`);
+  const rows = await res.json();
+  const toShape = (r) => ({
+    sym: r.symbol,
+    name: r.security_name,
+    shares: r.quantity,
+    avgCost: r.avg_cost ?? 0,
+    color: TICKER_COLORS[r.symbol] || 'var(--muted)',
+  });
+  taxableHoldings = rows.filter(r => r.account_type === 'taxable').map(toShape);
+  rothHoldings = rows.filter(r => r.account_type === 'roth').map(toShape);
+}
+
 // Init
-seedPrices();
-renderAll();
-fetchCrypto().then(renderAll);
-refreshPrices().then(renderAll);
-startClocks();
-startPriceRefresh(renderAll);
+async function init() {
+  await loadHoldings();
+  const allStocks = [...taxableHoldings, ...rothHoldings];
+  seedPrices(allStocks);
+  renderAll();
+  fetchCrypto().then(renderAll);
+  refreshPrices(allStocks).then(renderAll);
+  startClocks();
+  startPriceRefresh(renderAll, allStocks);
+}
+init();
 </script>
 </body>
 </html>

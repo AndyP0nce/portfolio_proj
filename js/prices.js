@@ -10,19 +10,20 @@ const API_BASE = 'http://localhost:3000';
 const liveData = {};
 let apiConnected = false;
 
-/** Seed all holdings with last known prices */
-function seedPrices() {
-  [...TAXABLE, ...ROTH].forEach(h => {
-    liveData[h.sym] = { c: h.seedPrice, pc: h.seedPrice, h: h.seedPrice * 1.01, l: h.seedPrice * 0.99, dp: 0 };
+/** Seed stock/ETF holdings with a fallback price (avgCost - not a real
+ *  quote, just something to render before the first live fetch lands),
+ *  plus crypto's last known prices from holdings.js. */
+function seedPrices(holdings) {
+  holdings.forEach(h => {
+    liveData[h.sym] = { c: h.avgCost, pc: h.avgCost, h: h.avgCost * 1.01, l: h.avgCost * 0.99, dp: 0 };
   });
   TAXABLE_CRYPTO.forEach(c => {
     liveData[c.sym] = { c: c.seedPrice, pc: c.seedPrice, dp: 0 };
   });
 }
 
-/** Fetch all stock/ETF prices from the local API's /api/quotes */
-async function fetchStocks() {
-  const holdings = [...TAXABLE, ...ROTH];
+/** Fetch stock/ETF prices for the given holdings from the local API's /api/quotes */
+async function fetchStocks(holdings) {
   const symbols = [...new Set(holdings.map(h => h.sym))];
   let hits = 0;
 
@@ -33,7 +34,7 @@ async function fetchStocks() {
     quotes = await res.json();
   } catch (e) {
     apiConnected = false;
-    updateApiIndicator(0, symbols.length);
+    updateApiIndicator(0, holdings.length);
     updateLastUpdate();
     return;
   }
@@ -43,7 +44,7 @@ async function fetchStocks() {
   holdings.forEach(h => {
     const d = bySymbol[h.sym];
     if (!d) return;
-    const prev = liveData[h.sym]?.c || h.seedPrice;
+    const prev = liveData[h.sym]?.c || h.avgCost;
     liveData[h.sym] = { c: d.c, pc: d.pc, h: d.h, l: d.l, dp: d.dp, d: d.d };
     // Flash row if price changed
     if (prev !== d.c) {
@@ -58,7 +59,7 @@ async function fetchStocks() {
   });
 
   apiConnected = hits > 0;
-  updateApiIndicator(hits, symbols.length);
+  updateApiIndicator(hits, holdings.length);
   updateLastUpdate();
 }
 
@@ -116,18 +117,18 @@ function updateLastUpdate() {
 }
 
 /** Full refresh: stocks + crypto */
-async function refreshPrices() {
-  await Promise.all([fetchStocks(), fetchCrypto()]);
+async function refreshPrices(holdings) {
+  await Promise.all([fetchStocks(holdings), fetchCrypto()]);
 }
 
 /** Start auto-refresh loop */
-function startPriceRefresh(renderFn) {
+function startPriceRefresh(renderFn, holdings) {
   // Refresh every 15s when open, every 5min when closed
   setInterval(() => {
-    if (getMarketSession() === 'open') refreshPrices().then(renderFn);
+    if (getMarketSession() === 'open') refreshPrices(holdings).then(renderFn);
   }, 15000);
 
   setInterval(() => {
-    if (getMarketSession() !== 'open') refreshPrices().then(renderFn);
+    if (getMarketSession() !== 'open') refreshPrices(holdings).then(renderFn);
   }, 300000);
 }
