@@ -1,29 +1,54 @@
 /* ══════════════════════════════════════════
-   PRICE FETCHING — Finnhub (server-side) + CoinGecko
+   PRICE FETCHING — Finnhub (server-side, stocks + crypto)
    ══════════════════════════════════════════ */
 
 // Finnhub quotes are fetched through the local API server now (see
 // server/lib/finnhub.js) - it holds FINNHUB_KEY in .env, so the
-// frontend never handles a key at all.
+// frontend never handles a key at all. Crypto (BTC/ETH/DOGE) goes
+// through the same endpoint - server/lib/finnhub.js maps those to
+// their Binance pairs before calling Finnhub, so there's a single
+// price source and a single request path for everything.
 const API_BASE = 'http://localhost:3000';
 
 const liveData = {};
 let apiConnected = false;
 
-/** Seed stock/ETF holdings with a fallback price (avgCost - not a real
- *  quote, just something to render before the first live fetch lands),
- *  plus crypto's last known prices from holdings.js. */
-function seedPrices(holdings) {
-  holdings.forEach(h => {
-    liveData[h.sym] = { c: h.avgCost, pc: h.avgCost, h: h.avgCost * 1.01, l: h.avgCost * 0.99, dp: 0 };
-  });
-  TAXABLE_CRYPTO.forEach(c => {
-    liveData[c.sym] = { c: c.seedPrice, pc: c.seedPrice, dp: 0 };
-  });
+// Last real Finnhub quote per symbol, kept in localStorage so a reload
+// (or a moment where the local API is unreachable) starts from the
+// last known-good live price instead of falling back to avgCost - a
+// fabricated, always-zero-gain number that has nothing to do with what
+// the market is actually doing. Cleared/replaced the instant a fresh
+// quote lands; never expired, since a stale real price is still a much
+// better default than cost basis, especially over a market-closed
+// weekend.
+const QUOTE_CACHE_KEY = 'stock_quote_cache';
+
+function loadCachedQuotes() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(QUOTE_CACHE_KEY) || 'null');
+    if (cached) Object.assign(liveData, cached);
+  } catch (e) { /* corrupt/missing cache - fall through to per-row avgCost */ }
 }
 
-/** Fetch stock/ETF prices for the given holdings from the local API's /api/quotes */
-async function fetchStocks(holdings) {
+function cacheQuotes(newData) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(QUOTE_CACHE_KEY) || 'null') || {};
+    Object.assign(cached, newData);
+    localStorage.setItem(QUOTE_CACHE_KEY, JSON.stringify(cached));
+  } catch (e) { /* storage full/blocked - just skip caching this round */ }
+}
+
+/** Seed liveData with the last known-good quote for every symbol
+ *  (localStorage cache). Anything still unseeded after this (first
+ *  visit, empty cache) falls back to its own row's avgCost - every
+ *  renderer already does that per-holding when liveData[sym] is unset. */
+function seedPrices() {
+  loadCachedQuotes();
+}
+
+/** Fetch live quotes (stocks, ETFs, and crypto alike) for the given
+ *  holdings from the local API's /api/quotes. */
+async function fetchQuotes(holdings) {
   // 'private' holdings (e.g. SPCX/SpaceX) aren't publicly quotable -
   // Finnhub's free tier can silently match an unrelated real ticker
   // with the same letters instead of erroring, so these must never be
@@ -45,12 +70,13 @@ async function fetchStocks(holdings) {
   }
 
   const bySymbol = Object.fromEntries(quotes.map(q => [q.symbol, q]));
+  const fresh = {};
 
   quotable.forEach(h => {
     const d = bySymbol[h.sym];
     if (!d) return;
     const prev = liveData[h.sym]?.c || h.avgCost;
-    liveData[h.sym] = { c: d.c, pc: d.pc, h: d.h, l: d.l, dp: d.dp, d: d.d };
+    liveData[h.sym] = fresh[h.sym] = { c: d.c, pc: d.pc, h: d.h, l: d.l, dp: d.dp, d: d.d };
     // Flash row if price changed
     if (prev !== d.c) {
       const row = document.getElementById('row-' + h.sym);
@@ -63,57 +89,10 @@ async function fetchStocks(holdings) {
     hits++;
   });
 
+  if (hits > 0) cacheQuotes(fresh);
   apiConnected = hits > 0;
   updateApiIndicator(hits, quotable.length);
   updateLastUpdate();
-}
-
-// CoinGecko's free/no-key tier has a tight rate limit, easily blown
-// through by dev-server auto-reloads (each fresh page load used to
-// fire a brand new call). A short localStorage cache survives across
-// reloads - unlike an in-memory variable - so a burst of reloads
-// within the window reuses the last successful fetch instead of
-// hitting CoinGecko again. A 429 response also often omits CORS
-// headers, so the browser reports it as a CORS error on top of the
-// real rate-limit failure - both point back to the same cause.
-const CRYPTO_CACHE_KEY = 'crypto_price_cache';
-const CRYPTO_CACHE_TTL_MS = 60000;
-
-/** Fetch crypto from CoinGecko (no key needed), via a short local cache */
-async function fetchCrypto() {
-  try {
-    const cached = JSON.parse(localStorage.getItem(CRYPTO_CACHE_KEY) || 'null');
-    if (cached && Date.now() - cached.ts < CRYPTO_CACHE_TTL_MS) {
-      Object.assign(liveData, cached.data);
-      return;
-    }
-  } catch (e) { /* corrupt/missing cache - fall through to a real fetch */ }
-
-  try {
-    const cgIds = 'bitcoin,ethereum,dogecoin';
-    const res = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${cgIds}&vs_currencies=usd&include_24hr_change=true`
-    );
-    if (!res.ok) return;
-    const d = await res.json();
-    const map = { BTC: d.bitcoin, ETH: d.ethereum, DOGE: d.dogecoin };
-    const cryptoData = {};
-    TAXABLE_CRYPTO.forEach(c => {
-      if (map[c.sym]) {
-        const price = map[c.sym].usd;
-        cryptoData[c.sym] = {
-          c:  price,
-          pc: price / (1 + (map[c.sym].usd_24h_change || 0) / 100),
-          dp: map[c.sym].usd_24h_change || 0,
-          h: null, l: null
-        };
-      }
-    });
-    Object.assign(liveData, cryptoData);
-    try {
-      localStorage.setItem(CRYPTO_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: cryptoData }));
-    } catch (e) { /* storage full/blocked - just skip caching this round */ }
-  } catch(e) { /* keep seed/cached values */ }
 }
 
 /** Update API connected indicator in UI */
@@ -144,9 +123,9 @@ function updateLastUpdate() {
   }) + ' PT';
 }
 
-/** Full refresh: stocks + crypto */
+/** Full refresh: all holdings (stocks + crypto) in one Finnhub call */
 async function refreshPrices(holdings) {
-  await Promise.all([fetchStocks(holdings), fetchCrypto()]);
+  await fetchQuotes(holdings);
 }
 
 /** Start auto-refresh loop */
@@ -159,4 +138,12 @@ function startPriceRefresh(renderFn, holdings) {
   setInterval(() => {
     if (getMarketSession() !== 'open') refreshPrices(holdings).then(renderFn);
   }, 300000);
+
+  // Fast reconnect: while the local API is down, retry every 5s
+  // regardless of market session, instead of sitting on the last
+  // cached quotes for however long is left on the interval above -
+  // recovers as soon as the server comes back up.
+  setInterval(() => {
+    if (!apiConnected) refreshPrices(holdings).then(renderFn);
+  }, 5000);
 }

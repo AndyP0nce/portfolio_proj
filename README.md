@@ -39,14 +39,14 @@ portfolio-site/
 
 ## How to Use
 
-### 1. Open Locally
-Just open `index.html` in any browser — no server needed for most features.
+### 1. Run It
+```bash
+npm start
+```
+From the project root. This starts the API server (`server/index.js`) on `http://localhost:3000`, which also serves the site itself — so that one URL is the whole app, no separate static server or editor "Live" button needed.
 
 ### 2. Live Prices (Finnhub)
-1. Get a free API key at **finnhub.io**
-2. Open `pages/live/dashboard.html`
-3. Paste your key in the input and hit CONNECT
-4. Key is saved in your browser — never sent anywhere else
+Live quotes (stocks, ETFs, and crypto alike) are fetched server-side through Finnhub — set `FINNHUB_KEY` in `server/.env`. The frontend never sees the key. Crypto (BTC/ETH/DOGE) is priced via Finnhub's Binance-pair quotes, falling back to CoinGecko (no key needed) if Finnhub's crypto quote is rate-limited or empty.
 
 ### 3. Update Your Holdings
 Edit **`data/holdings.js`** whenever:
@@ -72,8 +72,8 @@ git push origin main
 ## API Keys
 | Service | Key Required | Cost | Notes |
 |---------|-------------|------|-------|
-| Finnhub | Yes | Free | 60 calls/min · Real-time stocks |
-| CoinGecko | No | Free | Crypto prices · No auth needed |
+| Finnhub | Yes | Free | 60 calls/min · Real-time stocks, ETFs, and crypto (via Binance pairs) |
+| CoinGecko | No | Free | Crypto price fallback only, used if Finnhub's crypto quote fails |
 
 ## Last Updated
 May 15, 2026 — From Robinhood screenshots

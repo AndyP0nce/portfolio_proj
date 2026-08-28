@@ -15,41 +15,21 @@ const { getQuote } = require('./finnhub');
 
 const CRON_SOURCE = 'cron:daily-dca';
 
-// Finnhub's free tier prices stocks/ETFs, not crypto tickers like
-// BTC/ETH/DOGE the way its /quote endpoint expects - CoinGecko (same
-// source the frontend already uses, no key needed) covers those.
-const COINGECKO_IDS = { BTC: 'bitcoin', ETH: 'ethereum', DOGE: 'dogecoin' };
-
-async function getCryptoPrice(symbol) {
-  const id = COINGECKO_IDS[symbol];
-  if (!id) return null;
-  try {
-    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data[id]?.usd ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function getStockPrice(symbol) {
-  try {
-    const quote = await getQuote(symbol);
-    return quote && quote.c > 0 ? quote.c : null;
-  } catch {
-    return null;
-  }
-}
-
-function getPrice(security) {
+// finnhub.js maps BTC/ETH/DOGE to their Binance pairs internally, so
+// getQuote() prices crypto the same way it prices stocks/ETFs here.
+async function getPrice(security) {
   // 'private' securities (e.g. SPCX/SpaceX) aren't publicly quotable -
   // Finnhub's free-tier /quote endpoint doesn't error on an unknown
   // symbol, it can silently match an unrelated real ticker that
   // happens to share the same letters, so this must never be sent to
   // Finnhub at all rather than trusting a >0 price back.
   if (security.type === 'private') return null;
-  return security.type === 'crypto' ? getCryptoPrice(security.symbol) : getStockPrice(security.symbol);
+  try {
+    const quote = await getQuote(security.symbol);
+    return quote && quote.c > 0 ? quote.c : null;
+  } catch {
+    return null;
+  }
 }
 
 async function runDailyDca(runDate = new Date()) {
@@ -118,7 +98,7 @@ async function runDailyDca(runDate = new Date()) {
     if (alreadySnapshotted.get(security.id, today)) continue;
     const price = await priceFor(security);
     if (!price) continue;
-    insertSnapshot.run(security.id, price, today, security.type === 'crypto' ? 'coingecko' : 'finnhub');
+    insertSnapshot.run(security.id, price, today, 'finnhub');
     summary.snapshotted.push(security.symbol);
   }
 

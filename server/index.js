@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cron = require('node-cron');
 const config = require('./config');
@@ -30,6 +31,14 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Serves the whole site (index.html, css/, js/, data/, pages/) from
+// this same process, so `npm start` here is the one command that
+// stands up both the API and the page - no separate static server or
+// editor "Live" button needed. The CORS headers above stay in place
+// regardless, since file:// or a different static server still works
+// too if someone opens it that way instead.
+app.use(express.static(path.join(__dirname, '..')));
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });

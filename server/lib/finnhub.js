@@ -5,12 +5,58 @@ const config = require('../config');
 
 const BASE = 'https://finnhub.io/api/v1';
 
+// Finnhub's /quote endpoint also prices crypto, given an
+// exchange-prefixed pair (e.g. BINANCE:BTCUSDT) instead of a bare
+// ticker - confirmed against the live API. Everything else (stocks,
+// ETFs) is requested by its plain symbol as before.
+const CRYPTO_SYMBOLS = {
+  BTC: 'BINANCE:BTCUSDT',
+  ETH: 'BINANCE:ETHUSDT',
+  DOGE: 'BINANCE:DOGEUSDT',
+};
+
+async function getFinnhubQuote(finnhubSymbol) {
+  const url = `${BASE}/quote?symbol=${encodeURIComponent(finnhubSymbol)}&token=${config.finnhubKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Finnhub quote for ${finnhubSymbol} failed: ${res.status}`);
+  return res.json();
+}
+
+// CoinGecko needs no key, so it's kept as a fallback for crypto only -
+// Finnhub's free tier rate-limits its Binance-pair crypto quotes more
+// aggressively than its stock quotes in practice, and a DCA cron run
+// or a live-dashboard refresh landing on a rate-limited moment
+// shouldn't just go unpriced for the day/cycle when a keyless backup
+// is one call away.
+const COINGECKO_IDS = { BTC: 'bitcoin', ETH: 'ethereum', DOGE: 'dogecoin' };
+
+async function getCoinGeckoQuote(symbol) {
+  const id = COINGECKO_IDS[symbol];
+  if (!id) return null;
+  const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&include_24hr_change=true`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const d = data[id];
+  if (!d || !d.usd) return null;
+  const changePct = d.usd_24h_change || 0;
+  return { c: d.usd, pc: d.usd / (1 + changePct / 100), h: null, l: null, dp: changePct, d: null };
+}
+
 async function getQuote(symbol) {
   if (!config.finnhubKey) throw new Error('FINNHUB_KEY not set in .env');
-  const url = `${BASE}/quote?symbol=${encodeURIComponent(symbol)}&token=${config.finnhubKey}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Finnhub quote for ${symbol} failed: ${res.status}`);
-  return res.json();
+  const finnhubSymbol = CRYPTO_SYMBOLS[symbol] || symbol;
+
+  if (!CRYPTO_SYMBOLS[symbol]) return getFinnhubQuote(finnhubSymbol);
+
+  try {
+    const quote = await getFinnhubQuote(finnhubSymbol);
+    if (quote && quote.c > 0) return quote;
+    throw new Error('empty Finnhub quote');
+  } catch {
+    const fallback = await getCoinGeckoQuote(symbol);
+    if (fallback) return fallback;
+    throw new Error(`no quote available for ${symbol} (Finnhub and CoinGecko both failed)`);
+  }
 }
 
 // Free-tier Finnhub is rate-limited (60 calls/min), so quotes are

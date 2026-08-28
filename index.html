@@ -3,107 +3,303 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Andrew's Portfolio</title>
+<title>Live Dashboard · My Portfolio</title>
 <link rel="stylesheet" href="css/variables.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
 </head>
 <body>
-
-<!-- NAV -->
 <nav class="nav">
   <a class="nav-brand" href="index.html">PORTFOLIO <span>TRACKER</span></a>
-  <div class="nav-links">
-    <a class="nav-link active" href="index.html">Overview</a>
-    <a class="nav-link" href="pages/live/dashboard.html">Live Dashboard</a>
-    <a class="nav-link" href="pages/charts/charts.html">Charts</a>
-  </div>
 </nav>
-
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="mkt-status">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText" class="muted">Loading...</span>
+  </div>
+  <div class="clocks">
+    <div class="clock-item">PT <span class="clock-val" id="ptClock">--:--:--</span></div>
+    <div class="clock-item">ET <span class="clock-val" id="etClock">--:--:--</span></div>
+    <div class="font-mono" style="font-size:10px;display:flex;align-items:center;gap:6px;">
+      <span id="apiDot" style="width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
+      <span id="apiLabel" class="muted">API: connecting...</span>
+    </div>
+    <div class="clock-item">↻ <span id="lastUpdate" class="dim">—</span></div>
+  </div>
+</div>
 <!-- HERO -->
 <div class="hero">
   <div class="hero-top">
     <div>
-      <div class="hero-label">Andrew Ponce · May 15, 2026 · All Accounts</div>
-      <div class="hero-total" id="heroTotal">$15,310.13</div>
-      <div class="hero-change">▲ +$1,967.88 all time · +14.7% blended return</div>
-    </div>
-    <div class="pill-row">
-      <div class="pill">
-        <div class="pill-label">Taxable Individual</div>
-        <div class="pill-val green">$7,976</div>
-        <div class="pill-sub green">+$1,478 · +22.74%</div>
-      </div>
-      <div class="pill">
-        <div class="pill-label">Roth IRA</div>
-        <div class="pill-val green">$7,334</div>
-        <div class="pill-sub green">+$490 · +7.16%</div>
-      </div>
+      <div class="hero-label">My Portfolio · <span id="heroDate">—</span> · Taxable Brokerage</div>
+      <div class="hero-total" id="heroTotal">$—</div>
+      <div class="hero-change" id="heroChange" style="color:var(--muted)">Loading prices...</div>
     </div>
   </div>
   <div class="stat-strip">
-    <div class="stat-box"><div class="stat-label">Total P&L</div><div class="stat-val green">+$1,968</div><div class="stat-sub">all time vs cost basis</div></div>
-    <div class="stat-box"><div class="stat-label">Daily DCA</div><div class="stat-val green">$25.90/day</div><div class="stat-sub">$9,454/yr auto-invested</div></div>
-    <div class="stat-box"><div class="stat-label">Annual Divs</div><div class="stat-val amber">~$400/yr</div><div class="stat-sub">~$33/mo · mostly tax-free</div></div>
-    <div class="stat-box"><div class="stat-label">RH Match</div><div class="stat-val green">~$224/yr</div><div class="stat-sub">3% Roth · 1% Taxable</div></div>
-    <div class="stat-box"><div class="stat-label">2026 IRA</div><div class="stat-val blue">$1,877</div><div class="stat-sub">25% · $5,623 to max</div></div>
-    <div class="stat-box"><div class="stat-label">IRA Match</div><div class="stat-val amber">$56.31</div><div class="stat-sub">3% Gold · earned 2026</div></div>
-    <div class="stat-box"><div class="stat-label">Top Gainer</div><div class="stat-val green">TQQQ</div><div class="stat-sub">+83.81% all time 🔥</div></div>
-    <div class="stat-box"><div class="stat-label">Watch Out</div><div class="stat-val red">IBM</div><div class="stat-sub">−15.42% · biggest loser</div></div>
+    <div class="stat-box"><div class="stat-label">Total P&L</div><div class="stat-val" id="statTotalPL">—</div><div class="stat-sub">all time vs cost basis</div></div>
+    <div class="stat-box"><div class="stat-label">Today's P&L</div><div class="stat-val" id="statTodayPL">—</div><div class="stat-sub">vs prev close</div></div>
+    <div class="stat-box"><div class="stat-label">Contributed</div><div class="stat-val blue" id="statContributed">—</div><div class="stat-sub">cost basis · stocks + crypto</div></div>
+    <div class="stat-box"><div class="stat-label">Daily DCA</div><div class="stat-val green" id="statDailyDCA">—</div><div class="stat-sub" id="statDailyDCASub">—</div></div>
+    <div class="stat-box"><div class="stat-label">Annual Divs</div><div class="stat-val amber" id="statAnnualDivs">—</div><div class="stat-sub" id="statAnnualDivsSub">—</div></div>
+    <div class="stat-box"><div class="stat-label">Top Gainer</div><div class="stat-val green" id="statTopGainer">—</div><div class="stat-sub" id="statTopGainerSub">—</div></div>
+    <div class="stat-box"><div class="stat-label">Watch Out</div><div class="stat-val red" id="statWatchOut">—</div><div class="stat-sub" id="statWatchOutSub">—</div></div>
   </div>
 </div>
-
-<!-- QUICK LINKS -->
+<!-- SESSION BANNER -->
+<div style="margin:0 24px 16px;">
+  <div class="banner banner-closed" id="sessionBanner">
+    <div><div class="banner-title" id="bannerTitle">Checking...</div><div class="banner-sub" id="bannerSub"></div></div>
+    <div class="banner-right" id="bannerRight"></div>
+  </div>
+</div>
 <div class="body">
-  <div class="sec-head">
-    <div class="sec-title">Navigate</div>
-    <div class="sec-line"></div>
+  <!-- TAXABLE TABLE -->
+  <div>
+    <div class="sec-head"><div class="sec-title">Taxable Brokerage</div><div class="sec-line"></div><div class="sec-tag" id="taxTag">Individual</div></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Asset</th><th>Shares</th><th>Value</th><th>Live Price</th><th>Prev Close</th><th>Day Chg</th><th>All-Time P&L</th><th>%</th><th>Div Yield</th></tr></thead>
+      <tbody id="taxBody"><tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading live prices...</td></tr></tbody>
+      <tfoot><tr><td>TAXABLE TOTAL</td><td>—</td><td id="taxTotal">—</td><td>—</td><td>—</td><td id="taxDayChg">—</td><td id="taxTotalPL">—</td><td id="taxTotalPct">—</td><td class="green">—</td></tr></tfoot>
+    </table></div>
   </div>
-
-  <div class="cards2">
-    <a href="pages/live/dashboard.html" style="text-decoration:none;">
-      <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div class="card-head">🟢 Live Dashboard</div>
-        <div style="font-family:var(--font-title);font-size:18px;letter-spacing:1px;margin-bottom:6px;">Real-Time Prices</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">
-          Finnhub API · CoinGecko crypto · Updates every 15s during market hours · Day high/low · All-time P&L · Market open/close banner
-        </div>
-      </div>
-    </a>
-    <a href="pages/charts/charts.html" style="text-decoration:none;">
-      <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div class="card-head">📊 Charts</div>
-        <div style="font-family:var(--font-title);font-size:18px;letter-spacing:1px;margin-bottom:6px;">Portfolio Visualizations</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">
-          P&L per holding · Dividend income breakdown · Portfolio allocation donut · Daily DCA distribution
-        </div>
-      </div>
-    </a>
-    <a href="pages/projection/projection.html" style="text-decoration:none;">
-      <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--purple)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div class="card-head">🔮 Projection</div>
-        <div style="font-family:var(--font-title);font-size:18px;letter-spacing:1px;margin-bottom:6px;">30-Year Growth Model</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">
-          8% / 6% / 4% scenarios · Live inputs · Match included · Milestone cards · Annual breakdown table
-        </div>
-      </div>
-    </a>
-    <a href="pages/analysis/analysis.html" style="text-decoration:none;">
-      <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--amber)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div class="card-head">💸 Tax &amp; Fees</div>
-        <div style="font-family:var(--font-title);font-size:18px;letter-spacing:1px;margin-bottom:6px;">After-Tax Analysis</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">
-          Tax bracket impact · Expense ratio drag · Pre vs after-tax projection · Annual cost breakdown
-        </div>
-      </div>
-    </a>
+  <!-- CRYPTO TABLE -->
+  <div>
+    <div class="sec-head"><div class="sec-title">Crypto</div><div class="sec-line"></div><div class="sec-tag">CoinGecko · No Key Needed</div></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Asset</th><th>Coins</th><th>Live Price</th><th>24hr Chg</th><th>Value</th><th>All-Time P&L</th><th>%</th><th>Risk</th></tr></thead>
+      <tbody id="cryptoBody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:11px;"><span class="spinner"></span>Loading CoinGecko...</td></tr></tbody>
+      <tfoot><tr><td>CRYPTO TOTAL</td><td>—</td><td>—</td><td>—</td><td id="cryptoTotal">—</td><td id="cryptoTotalPL">—</td><td id="cryptoTotalPct">—</td><td>—</td></tr></tfoot>
+    </table></div>
   </div>
-
 </div>
+<footer>FINNHUB REAL-TIME (SERVER-SIDE) · COINGECKO CRYPTO · NOT FINANCIAL ADVICE</footer>
+<script src="data/holdings.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/market.js"></script>
+<script src="js/prices.js"></script>
+<script>
+// Builds each row's DOM exactly once (tagged by id), then on every
+// later call only patches the cells that can change - textContent and
+// class, never innerHTML - so a refresh updates numbers in place
+// instead of tearing down and repainting the whole table. This also
+// means the flash-g/flash-r class fetchStocks() puts on a <tr> when
+// its price moves actually survives to be seen, instead of getting
+// wiped out by the next full rebuild a moment later.
+function renderHoldings(holdings, tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody.dataset.ready) { tbody.innerHTML = ''; tbody.dataset.ready = '1'; }
+  let totalVal=0,totalCost=0,totalDay=0;
 
-<footer>
-  Bacons portfolio page 
-</footer>
+  holdings.forEach(h => {
+    const d = liveData[h.sym] || {c:h.avgCost,pc:h.avgCost,h:h.avgCost,l:h.avgCost,dp:0};
+    const val=d.c*h.shares, cost=h.avgCost*h.shares;
+    const pl=val-cost, plPct=cost>0?(pl/cost)*100:null;
+    const day=(d.c-d.pc)*h.shares, dayPct=d.dp||((d.c-d.pc)/d.pc*100);
+    totalVal+=val; totalCost+=cost; totalDay+=day;
 
+    if (!document.getElementById('row-'+h.sym)) {
+      tbody.insertAdjacentHTML('beforeend', `<tr id="row-${h.sym}">
+        <td><div class="tkr" style="color:${h.color}">${h.sym}</div><div class="tkr-sub">${h.name}</div></td>
+        <td>${h.shares<1?h.shares.toFixed(5):h.shares}</td>
+        <td id="val-${h.sym}"></td>
+        <td id="price-${h.sym}"></td>
+        <td id="prevclose-${h.sym}" style="color:var(--muted)"></td>
+        <td id="daychg-${h.sym}"></td>
+        <td id="pl-${h.sym}"></td>
+        <td id="plpct-${h.sym}"></td>
+        <td class="amber">${h.divYield}%</td>
+      </tr>`);
+    }
+
+    document.getElementById('val-'+h.sym).textContent = $f(val);
+    document.getElementById('price-'+h.sym).textContent = fmtPrice(d.c);
+    document.getElementById('prevclose-'+h.sym).textContent = fmtPrice(d.pc);
+
+    const dayEl = document.getElementById('daychg-'+h.sym);
+    dayEl.className = pClass(day);
+    dayEl.textContent = `${pSign(day)}${$f(day)} (${pSign(dayPct)}${dayPct.toFixed(2)}%)`;
+
+    const plEl = document.getElementById('pl-'+h.sym);
+    plEl.className = pClass(pl);
+    plEl.textContent = `${pSign(pl)}${$f(pl)}`;
+
+    const plPctEl = document.getElementById('plpct-'+h.sym);
+    plPctEl.className = plPct!=null?pClass(plPct):'muted';
+    plPctEl.textContent = plPct!=null?pSign(plPct)+plPct.toFixed(1)+'%':'n/a (cost unknown)';
+  });
+
+  return {totalVal,totalCost,totalDay};
+}
+
+function renderCrypto() {
+  const tbody = document.getElementById('cryptoBody');
+  if (!tbody.dataset.ready) { tbody.innerHTML = ''; tbody.dataset.ready = '1'; }
+  let tv=0,tc=0,td=0;
+
+  TAXABLE_CRYPTO.forEach(c => {
+    const d=liveData[c.sym]||{c:c.avgCost,pc:c.avgCost,dp:0};
+    const val=d.c*c.coins, cost=c.avgCost*c.coins;
+    const pl=val-cost, plPct=(pl/cost)*100;
+    const day=(d.c-d.pc)*c.coins;
+    tv+=val; tc+=cost; td+=day;
+
+    if (!document.getElementById('row-'+c.sym)) {
+      tbody.insertAdjacentHTML('beforeend', `<tr id="row-${c.sym}">
+        <td><div class="tkr purple">${c.sym}</div><div class="tkr-sub">${c.name} · ${c.coins}</div></td>
+        <td>${c.coins}</td>
+        <td id="cprice-${c.sym}"></td>
+        <td id="c24-${c.sym}"></td>
+        <td id="cval-${c.sym}"></td>
+        <td id="cpl-${c.sym}"></td>
+        <td id="cplpct-${c.sym}"></td>
+        <td><span class="badge b-spec">SPEC</span></td>
+      </tr>`);
+    }
+
+    document.getElementById('cprice-'+c.sym).textContent = fmtPrice(d.c);
+
+    const c24 = document.getElementById('c24-'+c.sym);
+    c24.className = pClass(d.dp);
+    c24.textContent = `${pSign(d.dp)}${d.dp?.toFixed(2)}% 24hr`;
+
+    document.getElementById('cval-'+c.sym).textContent = $f(val);
+
+    const cplEl = document.getElementById('cpl-'+c.sym);
+    cplEl.className = pClass(pl);
+    cplEl.textContent = `${pSign(pl)}${$f(pl)}`;
+
+    const cplPctEl = document.getElementById('cplpct-'+c.sym);
+    cplPctEl.className = pClass(plPct);
+    cplPctEl.textContent = `${pSign(plPct)}${plPct.toFixed(1)}%`;
+  });
+
+  const pl=tv-tc,plp=(pl/tc)*100;
+  document.getElementById('cryptoTotal').textContent=$f(tv);
+  document.getElementById('cryptoTotalPL').innerHTML=`<span class="${pClass(pl)}">${pSign(pl)}${$f(pl)}</span>`;
+  document.getElementById('cryptoTotalPct').innerHTML=`<span class="${pClass(plp)}">${pSign(plp)}${plp.toFixed(1)}%</span>`;
+  return {totalVal:tv, totalCost:tc, totalDay:td};
+}
+
+function computeAnnualDivs(holdings) {
+  let total = 0;
+  holdings.forEach(h => {
+    const d = liveData[h.sym] || { c: h.avgCost };
+    total += d.c * h.shares * (h.divYield || 0) / 100;
+  });
+  return total;
+}
+
+function computeGainerLoser(holdings) {
+  let best = null, worst = null;
+  holdings.forEach(h => {
+    if (!h.avgCost) return;
+    const d = liveData[h.sym] || { c: h.avgCost };
+    const pct = (d.c - h.avgCost) / h.avgCost * 100;
+    if (!best || pct > best.pct) best = { sym: h.sym, pct };
+    if (!worst || pct < worst.pct) worst = { sym: h.sym, pct };
+  });
+  return { best, worst };
+}
+
+function renderAll() {
+  document.getElementById('heroDate').textContent = LAST_UPDATED;
+
+  const tax = renderHoldings(taxableHoldings, 'taxBody');
+  const crypto = renderCrypto();
+
+  // Crypto is held inside the taxable/individual brokerage account
+  // (not a separate account) per the real Robinhood account structure,
+  // so the top-level total (hero + stat strip) includes it. The
+  // stocks table's own footer below stays stocks-only, since that
+  // table only lists stock/ETF rows - crypto has its own footer there.
+  const account = {
+    totalVal: tax.totalVal + crypto.totalVal,
+    totalCost: tax.totalCost + crypto.totalCost,
+    totalDay: tax.totalDay + crypto.totalDay,
+  };
+
+  const gpl = account.totalVal - account.totalCost;
+  const gpct = account.totalCost > 0 ? (gpl / account.totalCost) * 100 : 0;
+  document.getElementById('heroTotal').textContent = '$' + account.totalVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('heroTotal').style.color = gpl >= 0 ? 'var(--green)' : 'var(--red)';
+  const heroChange = document.getElementById('heroChange');
+  heroChange.className = pClass(gpl);
+  heroChange.textContent = `${pSign(gpl)}${$f(gpl)} all time · ${pSign(gpct)}${gpct.toFixed(2)}%`;
+
+  document.getElementById('statTotalPL').textContent = `${pSign(gpl)}${$f(gpl)}`;
+  document.getElementById('statTotalPL').className = 'stat-val ' + pClass(gpl);
+  document.getElementById('statTodayPL').textContent = `${pSign(account.totalDay)}${$f(account.totalDay)}`;
+  document.getElementById('statTodayPL').className = 'stat-val ' + pClass(account.totalDay);
+
+  // Contributed = cost basis (avgCost × shares/coins, summed) -
+  // recomputed on every render from holdings.js, so it stays current
+  // automatically as shares/avgCost change, rather than a number
+  // that's typed in once and goes stale.
+  document.getElementById('statContributed').textContent = '$' + account.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Daily DCA / Annual Divs are taxable-only now that Roth is no
+  // longer shown - DCA.taxableDaily already sums only the taxable-
+  // account dca fields in holdings.js (stocks + BTC).
+  document.getElementById('statDailyDCA').textContent = '$' + DCA.taxableDaily.toFixed(2) + '/day';
+  const taxAnnual = DCA.taxableDaily * 365 * (1 + DCA.taxableMatch);
+  document.getElementById('statDailyDCASub').textContent = '$' + Math.round(taxAnnual).toLocaleString('en-US') + '/yr incl. match';
+
+  const annualDivs = computeAnnualDivs(taxableHoldings);
+  document.getElementById('statAnnualDivs').textContent = '~$' + Math.round(annualDivs).toLocaleString('en-US') + '/yr';
+  document.getElementById('statAnnualDivsSub').textContent = '~$' + Math.round(annualDivs / 12) + '/mo';
+
+  const { best, worst } = computeGainerLoser(taxableHoldings);
+  if (best) {
+    document.getElementById('statTopGainer').textContent = best.sym;
+    document.getElementById('statTopGainer').className = 'stat-val ' + pClass(best.pct);
+    document.getElementById('statTopGainerSub').textContent = `${pSign(best.pct)}${best.pct.toFixed(2)}% all time`;
+  }
+  if (worst) {
+    document.getElementById('statWatchOut').textContent = worst.sym;
+    document.getElementById('statWatchOut').className = 'stat-val ' + pClass(worst.pct);
+    document.getElementById('statWatchOutSub').textContent = `${pSign(worst.pct)}${worst.pct.toFixed(2)}% · biggest loser`;
+  }
+
+  document.getElementById('taxTotal').textContent = '$' + tax.totalVal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const taxPl = tax.totalVal - tax.totalCost, taxPct = tax.totalCost > 0 ? (taxPl / tax.totalCost) * 100 : 0;
+  document.getElementById('taxTotalPL').innerHTML = `<span class="${pClass(taxPl)}">${pSign(taxPl)}${$f(taxPl)}</span>`;
+  document.getElementById('taxTotalPct').innerHTML = `<span class="${pClass(taxPl)}">${pSign(taxPct)}${taxPct.toFixed(1)}%</span>`;
+  document.getElementById('taxDayChg').innerHTML = `<span class="${pClass(tax.totalDay)}">${pSign(tax.totalDay)}${$f(tax.totalDay)}</span>`;
+  document.getElementById('taxTag').textContent = '$' + tax.totalVal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+let taxableHoldings = [];
+
+// Holdings come from data/holdings.js - the manually-maintained
+// portfolio snapshot - not /api/holdings. The DB's derived positions
+// are stale (they only reflect the original statement CSVs; there's
+// no updated statement data to re-seed from), so holdings.js is the
+// accurate source of shares/avgCost until real updated statements
+// exist. Only the *prices* are live (Finnhub/CoinGecko via
+// /api/quotes below) - shares and cost basis are exactly what's in
+// holdings.js, per an explicit decision to treat that file as
+// authoritative for now.
+function loadHoldings() {
+  taxableHoldings = TAXABLE;
+}
+
+// Init
+function init() {
+  loadHoldings();
+  seedPrices();
+  renderAll();
+  // refreshPrices() fetches every quotable holding - stocks, ETFs, and
+  // crypto alike - from /api/quotes (Finnhub) in one request. Crypto
+  // must be included here too, not just in taxableHoldings, or its
+  // price would never refresh past its avgCost fallback.
+  const quotableHoldings = [...taxableHoldings, ...TAXABLE_CRYPTO];
+  refreshPrices(quotableHoldings).then(renderAll);
+  startPriceRefresh(renderAll, quotableHoldings);
+  startClocks();
+}
+init();
+</script>
 </body>
 </html>
